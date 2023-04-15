@@ -6,7 +6,7 @@
 // 定义了一个线程级别的变量
 static __thread RoutineThreadEnv* routineEnvPerThread = NULL;
 
-RoutineThreadEnv::RoutineThreadEnv() : call_stack_size_(0) { 
+RoutineThreadEnv::RoutineThreadEnv() : call_stack_size_(0) {
   // 创建主协程
   auto main_routine = new Routine(this, true, nullptr, nullptr, nullptr);
   call_stack_[call_stack_size_++] = main_routine;
@@ -15,9 +15,7 @@ RoutineThreadEnv::RoutineThreadEnv() : call_stack_size_(0) {
   loop_ = new EventLoop();
 }
 
-RoutineThreadEnv::~RoutineThreadEnv() {
-  delete loop_;
-}
+RoutineThreadEnv::~RoutineThreadEnv() { delete loop_; }
 
 RoutineThreadEnv* get_curr_thread_env() {
   if (routineEnvPerThread) {
@@ -29,10 +27,9 @@ RoutineThreadEnv* get_curr_thread_env() {
 }
 
 Routine* RoutineThreadEnv::get_curr_routine() {
-  return call_stack_[call_stack_size_-1];
+  return call_stack_[call_stack_size_ - 1];
 }
 
 void RoutineThreadEnv::push_to_call_stack(Routine* r) {
-   call_stack_[call_stack_size_++] = r;
+  call_stack_[call_stack_size_++] = r;
 }
-

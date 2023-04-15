@@ -9,15 +9,15 @@
 #include "stack_mem.h"
 
 struct RoutineAttr {
-	int stack_size;
+  int stack_size;
   // 是否使用共享栈
-	ShareStack* share_stack;
-	
+  ShareStack* share_stack;
+
   RoutineAttr() {
-		stack_size = 128 * 1024;
-		share_stack = NULL;
-	}
-}__attribute__ ((packed));
+    stack_size = 128 * 1024;
+    share_stack = NULL;
+  }
+} __attribute__((packed));
 
 typedef void* (*RoutineFunc)(void*);
 
@@ -43,7 +43,8 @@ class Routine {
   // 栈顶指针, todo 这玩意为什么不放stackmem里
   char* stack_sp_;
 
-  Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr, RoutineFunc func, void* arg); 
+  Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr,
+          RoutineFunc func, void* arg);
 
   // 初始化上下文
   void init_ctx();
@@ -60,4 +61,3 @@ Routine* rt_self();
 EventLoop* get_thread_eventloop();
 
 #endif
-

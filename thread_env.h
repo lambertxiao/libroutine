@@ -9,15 +9,15 @@ class Routine;
 class RoutineThreadEnv {
  public:
   // 当前线程里的协程调用栈
-	Routine* call_stack_[128];
+  Routine* call_stack_[128];
   // 表示调用栈中当前记录的协程数量
-	int call_stack_size_;
+  int call_stack_size_;
   // 指向协程调度器使用的epoll实例的指针
-	EventLoop* loop_;
+  EventLoop* loop_;
 
   // pending和occupy仅在共享栈模式下有用
-	Routine* pending_rt_;
-	Routine* occupy_rt_;
+  Routine* pending_rt_;
+  Routine* occupy_rt_;
 
   RoutineThreadEnv();
   ~RoutineThreadEnv();
@@ -34,4 +34,3 @@ void init_curr_thread_env();
 RoutineThreadEnv* get_curr_thread_env();
 
 #endif
-

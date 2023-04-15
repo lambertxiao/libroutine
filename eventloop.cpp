@@ -2,10 +2,10 @@
 #include "epoll.h"
 
 EventLoop::EventLoop() {
-	epfd_ = rt_epoll_create(ep_size_);
+  epfd_ = rt_epoll_create(ep_size_);
   time_wheel_ = new TimeWheel();
-	active_list_= new TWSlotLink();
-	timeout_list_ = new TWSlotLink();
+  active_list_ = new TWSlotLink();
+  timeout_list_ = new TWSlotLink();
 }
 
 EventLoop::~EventLoop() {
@@ -19,4 +19,3 @@ EventLoop::~EventLoop() {
     delete time_wheel_;
   }
 }
-

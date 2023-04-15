@@ -6,12 +6,11 @@
 // copy from libco
 struct RoutineCtx {
 #if defined(__i386__)
-	void *regs[ 8 ];
+  void *regs[8];
 #else
-	void *regs[ 14 ];
+  void *regs[14];
 #endif
-	size_t ss_size;
-	char *ss_sp;
+  size_t ss_size;
+  char *ss_sp;
 };
 #endif
-
