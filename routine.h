@@ -1,31 +1,63 @@
-#ifndef LIBCORT_COROUTINE_H_
-#define LIBCORT_COROUTINE_H_
+#ifndef LIBROUTINE_ROUTINE_H_
+#define LIBROUTINE_ROUTINE_H_
 
-struct Routine {};
-struct RoutineAttr {};
-struct EventLoop {};
+#include <sys/poll.h>
+#include <stdint.h>
+#include "routine_ctx.h"
+#include "eventloop.h"
+#include "thread_env.h"
+#include "stack_mem.h"
+
+struct RoutineAttr {
+	int stack_size;
+  // 是否使用共享栈
+	ShareStack* share_stack;
+	
+  RoutineAttr() {
+		stack_size = 128 * 1024;
+		share_stack = NULL;
+	}
+}__attribute__ ((packed));
+
+typedef void* (*RoutineFunc)(void*);
+
+class Routine {
+ public:
+  RoutineThreadEnv* env_;
+  RoutineCtx ctx_;
+  RoutineFunc func_;
+  void* arg_;
+  bool is_main_;
+
+  bool is_start_;
+  bool is_stop_;
+  // 是否共享协程栈
+  bool is_share_stack;
+
+  StackMem* stack_mem_;
+
+  // 当协程退出cpu的时候，需要将栈上的数据缓存在该buff里
+  char* stack_buff_;
+  uint64_t stack_buff_len_;
+
+  // 栈顶指针, todo 这玩意为什么不放stackmem里
+  char* stack_sp_;
+
+  Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr, RoutineFunc func, void* arg); 
+
+  // 初始化上下文
+  void init_ctx();
+  void save_stack_to_buff();
+};
+
 struct EventLoopFunc {};
 struct PollFD {};
+struct RtCond {};
 
-typedef void* (*routine_func)(void*);
-
-// 创建一个协程
-int rt_create(Routine* co, const Routine *attr, routine_func func, void *arg);
-// 启动一个协程
-void rt_resume(Routine *co);
-// 将传入的协程退出cpu 
-void rt_yield(Routine *co);
-// 将当前正在执行的协程让出CPU
-void rt_yield_ct(); 
-// 释放资源
-void rt_release(Routine* co);
-// 重置状态
-void rt_reset(Routine* co); 
-
+// 初始化协程上下文
 Routine* rt_self();
 
-int	rt_poll(EventLoop *ctx, PollFD fds[], int timeout_ms);
-void rt_eventloop(EventLoop *ctx, EventLoopFunc func, void *arg);
+EventLoop* get_thread_eventloop();
 
 #endif
 
