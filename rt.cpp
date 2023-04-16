@@ -9,6 +9,8 @@ extern "C" {
 extern void rtctx_swap(RoutineCtx*, RoutineCtx*) asm("rtctx_swap");
 };
 
+static int routineRealEntryFunc(Routine * rt, void *);
+
 int rt_create(Routine** co, RoutineAttr* attr, RoutineFunc func, void* arg) {
   auto rt = new Routine(get_curr_thread_env(), false, attr, func, arg);
   *co = rt;
@@ -46,7 +48,10 @@ static int routineRealEntryFunc(Routine * rt, void *) {
 }
 
 void rt_yield(Routine* co) {};
-void rt_yield_ct() {};
+
+void rt_yield_ct() {
+  rt_yield_env(get_curr_thread_env());
+};
 
 void rt_yield_env(RoutineThreadEnv* env) {
   // 当前协程的调用协程
@@ -120,17 +125,32 @@ void rt_swap(Routine* curr, Routine* pending_rt) {
   }
 }
 
-RoutineCond* rt_cond_alloc() { return nullptr; }
+RoutineCond* rt_cond_alloc() { 
+  return new RoutineCond();
+}
+
+int rt_cond_free(RoutineCond* cond) {
+  if (!cond) {
+    return -1;
+  }
+  delete cond;
+  return 0;
+}
 
 int rt_cond_wait(RoutineCond* cond, int timeout) {
+  if (!cond) {
+    printf("invalid routine cond\n");
+    return -1;
+  }
   auto wait_item = new RoutineCondWaitItem();
+  wait_item->timeout_ = timeout;
   wait_item->bind_rt_ = get_curr_routine();
   wait_item->wait_cb_ = [](Routine* rt){
     // rt_resume会让协程回到下面的yield之后
 	  rt_resume(rt);
   };
 
-  int ret = cond->add_wait_item(wait_item); 
+  int ret = cond->wait(wait_item); 
   if (ret != 0) {
     delete wait_item;
     return ret;
@@ -139,7 +159,7 @@ int rt_cond_wait(RoutineCond* cond, int timeout) {
 	rt_yield_ct();
 
   // 执行到这里证明，重新拿到了cpu的执行权了，因此删掉对条件变量的等待
-  cond->remove(wait_item);
+  cond->items_.remove(wait_item);
   delete wait_item;
 
 	return 0;
@@ -149,8 +169,13 @@ uint64_t get_timems() {
   return 0;
 }
 
-void rt_cond_signal(RoutineCond* cond) {}
-void rt_cond_broadcast(RoutineCond* cond) {}
+int rt_cond_signal(RoutineCond* cond) {
+  return cond->signal();
+}
+
+int rt_cond_broadcast(RoutineCond* cond) {
+  return cond->broadcast();
+}
 
 int rt_poll(EventLoop* ctx, PollFD fds[], int timeout_ms) { return 0; }
 

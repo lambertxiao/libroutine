@@ -21,11 +21,13 @@ void rt_reset(Routine* r);
 
 // r1退位，r2上位
 void rt_swap(Routine* r1, Routine* r2);
-static int routineRealEntryFunc(Routine * rt, void *);
+
 RoutineCond* rt_cond_alloc();
+int rt_cond_free(RoutineCond* rt);
+
 int rt_cond_wait(RoutineCond* cond, int timeout);
-void rt_cond_signal(RoutineCond* cond);
-void rt_cond_broadcast(RoutineCond* cond);
+int rt_cond_signal(RoutineCond* cond);
+int rt_cond_broadcast(RoutineCond* cond);
 
 Routine* get_curr_routine();
 int rt_poll(EventLoop* ctx, PollFD fds[], int timeout_ms);

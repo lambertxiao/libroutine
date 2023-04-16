@@ -2,26 +2,28 @@
 #define LIBROUTINE_TIMEWHEEL_H_
 
 #include <stdint.h>
+#include <list>
+#include <vector>
 
-class TimeWheelSlotLink;
 class TimeWheelSlotLinkItem;
+class TimeWheelSlotLink : public std::list<TimeWheelSlotLinkItem*> {};
 
 class TimeWheel {
  public:
   // 时间轮槽，每一个槽里是一个双端队列
-  TimeWheelSlotLink* slots;
-  // 轮上有多少个槽
-  int slotCnt;
+  std::vector<TimeWheelSlotLink*> slots_;
+  // 轮上有多少个槽，一个槽1ms
+  int slot_cnt_;
 
   // 时间轮的当前时间
-  unsigned long long ullStart;
+  uint64_t curr_time_ms_;
   // 当前停留在哪个槽
-  long long llStartIdx;
+  uint64_t curr_slot_;
 
+  TimeWheel(int slot_cnt);
   int add_item(TimeWheelSlotLinkItem* item);
 };
 
-class TimeWheelSlotLinkItem;
 typedef void (*TimeCallBack)(TimeWheelSlotLinkItem*);
 
 class TimeWheelSlotLinkItem {
@@ -34,24 +36,20 @@ class TimeWheelSlotLinkItem {
   TimeWheelSlotLinkItem* pNext;
 
   // 指向节点所在链表
-  TimeWheelSlotLink* link;
+  TimeWheelSlotLink link_;
 
   // 到期时间
-  uint64_t timeout_ms;
+  uint64_t timeout_ms_;
 
   // 准备事件和处理事件的函数指针
   // OnPreparePfn_t pfnPrepare;
   // 时间一到，会调用cb(arg)
-  TimeCallBack cb; 
-  void* arg; // arg实际上会是回调的routine
+  TimeCallBack cb_; 
+  void* arg_; // arg实际上会是回调的routine
 
   // 是否超时
   bool bTimeout;
 };
 
-class TimeWheelSlotLink {
-  TimeWheelSlotLinkItem* head;
-  TimeWheelSlotLinkItem* tail;
-};
 
 #endif

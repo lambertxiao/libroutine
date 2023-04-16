@@ -3,7 +3,8 @@
 
 EventLoop::EventLoop() {
   epfd_ = rt_epoll_create(ep_size_);
-  time_wheel_ = new TimeWheel();
+  // todo 改为多级时间轮
+  time_wheel_ = new TimeWheel(60 * 1000);
   active_list_ = new TimeWheelSlotLink();
   timeout_list_ = new TimeWheelSlotLink();
 }

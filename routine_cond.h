@@ -4,7 +4,6 @@
 #include <list>
 #include "time_wheel.h"
 #include "thread_env.h"
-#include "common.h"
 
 typedef void (*RoutineCallBack)(Routine*);
 
@@ -20,28 +19,12 @@ class RoutineCondWaitItem {
   TimeWheelSlotLinkItem timeitem_;
 };
 
-
-class RoutineCond : public std::list<RoutineCondWaitItem*> {
+class RoutineCond {
  public:
-  int add_wait_item(RoutineCondWaitItem* item) {
-    item->timeitem_.arg = item;
-    item->timeitem_.cb = [](TimeWheelSlotLinkItem* timeitem){
-      auto waititem = (RoutineCondWaitItem*)timeitem->arg;
-      waititem->wait_cb_(waititem->bind_rt_);
-    };
-   	
-    if (item->timeout_ > 0){
-      // 设置等待有效期
-		  item->timeitem_.timeout_ms = get_time_ms() + item->timeout_;
-      int ret = get_curr_thread_env()->loop_->time_wheel_->add_item(&item->timeitem_);
-	  	if( ret != 0 ) {
-		  	return ret;
-		  }
-	  }
-  
-    emplace_back(item); 
-    return 0;
-  }
+  std::list<RoutineCondWaitItem*> items_;
+  int wait(RoutineCondWaitItem* item);
+  int signal();
+  int broadcast();
 };
 
 #endif
