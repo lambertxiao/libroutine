@@ -57,7 +57,6 @@ class Routine {
 struct EventLoopFunc {};
 struct PollFD {};
 
-
 // 初始化协程上下文
 Routine* rt_self();
 

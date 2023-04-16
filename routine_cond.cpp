@@ -3,21 +3,22 @@
 
 int RoutineCond::wait(RoutineCondWaitItem* item) {
   item->timeitem_.arg_ = item;
-  item->timeitem_.cb_ = [](TimeWheelSlotLinkItem* timeitem){
+  item->timeitem_.cb_ = [](TimeWheelSlotLinkItem* timeitem) {
     auto waititem = (RoutineCondWaitItem*)timeitem->arg_;
     waititem->wait_cb_(waititem->bind_rt_);
   };
-  
-  if (item->timeout_ > 0){
+
+  if (item->timeout_ > 0) {
     // 设置等待有效期
     item->timeitem_.timeout_ms_ = get_time_ms() + item->timeout_;
-    int ret = get_curr_thread_env()->loop_->time_wheel_->add_item(&item->timeitem_);
-    if( ret != 0 ) {
+    int ret =
+        get_curr_thread_env()->loop_->time_wheel_->add_item(&item->timeitem_);
+    if (ret != 0) {
       return ret;
     }
   }
 
-  items_.emplace_back(item); 
+  items_.emplace_back(item);
   return 0;
 }
 
@@ -47,4 +48,3 @@ int RoutineCond::broadcast() {
     get_curr_thread_env()->loop_->active_list_->emplace_back(&item->timeitem_);
   }
 }
-

@@ -44,12 +44,11 @@ class TimeWheelSlotLinkItem {
   // 准备事件和处理事件的函数指针
   // OnPreparePfn_t pfnPrepare;
   // 时间一到，会调用cb(arg)
-  TimeCallBack cb_; 
-  void* arg_; // arg实际上会是回调的routine
+  TimeCallBack cb_;
+  void* arg_;  // arg实际上会是回调的routine
 
   // 是否超时
   bool bTimeout;
 };
-
 
 #endif
