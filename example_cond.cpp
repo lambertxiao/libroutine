@@ -10,11 +10,12 @@ struct stTask_t {
 };
 
 struct stEnv_t {
-  RtCond* cond;
+  RoutineCond* cond;
   queue<stTask_t*> task_queue;
 };
 
 void* Producer(void* args) {
+  printf("exec producer function");
   // co_enable_hook_sys();
   stEnv_t* env = (stEnv_t*)args;
   int id = 0;
@@ -31,6 +32,7 @@ void* Producer(void* args) {
 }
 
 void* Consumer(void* args) {
+  printf("exec consumer function");
   // co_enable_hook_sys();
   stEnv_t* env = (stEnv_t*)args;
   while (true) {

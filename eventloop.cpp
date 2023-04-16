@@ -4,8 +4,8 @@
 EventLoop::EventLoop() {
   epfd_ = rt_epoll_create(ep_size_);
   time_wheel_ = new TimeWheel();
-  active_list_ = new TWSlotLink();
-  timeout_list_ = new TWSlotLink();
+  active_list_ = new TimeWheelSlotLink();
+  timeout_list_ = new TimeWheelSlotLink();
 }
 
 EventLoop::~EventLoop() {

@@ -10,8 +10,8 @@ class EventLoop {
   int ep_size_ = 1024 * 10;
   // 用一个时间轮来存放所有的定时任务
   TimeWheel* time_wheel_;
-  TWSlotLink* timeout_list_;
-  TWSlotLink* active_list_;
+  TimeWheelSlotLink* timeout_list_;
+  TimeWheelSlotLink* active_list_;
   EventLoop();
   ~EventLoop();
 };

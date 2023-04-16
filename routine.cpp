@@ -58,11 +58,10 @@ Routine::Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr,
 
   // lp->cEnableSysHook = 0;
   is_share_stack = at.share_stack != nullptr;
-  init_ctx();
 };
 
 // only __x86_64__
-void Routine::init_ctx() {
+void Routine::init_ctx(RoutineEntryFunc func) {
   auto ctx = &ctx_;
   char* sp = ctx->ss_sp + ctx->ss_size - sizeof(void*);
   sp = (char*)((unsigned long)sp & -16LL);
@@ -74,7 +73,7 @@ void Routine::init_ctx() {
   // 记住栈顶位置
   ctx->regs[kRSP] = sp;
   // 记住返回地址
-  ctx->regs[kRETAddr] = (char*)func_;
+  ctx->regs[kRETAddr] = (char*)func;
   // 记住第一个参数
   ctx->regs[kRDI] = (char*)this;
   // 记住第二个参数

@@ -3,6 +3,7 @@
 #include <memory>
 #include <string.h>
 #include "routine_ctx.h"
+#include "routine_cond.h"
 
 extern "C" {
 extern void rtctx_swap(RoutineCtx*, RoutineCtx*) asm("rtctx_swap");
@@ -17,14 +18,49 @@ int rt_create(Routine** co, RoutineAttr* attr, RoutineFunc func, void* arg) {
 void rt_resume(Routine* rt) {
   RoutineThreadEnv* env = rt->env_;
   auto curr_rt = env->get_curr_routine();
+
+  if (!rt->is_start_) {
+    rt->init_ctx((RoutineEntryFunc(routineRealEntryFunc)));
+    rt->is_start_ = true;
+  }
   // 把目标协程压栈
   env->push_to_call_stack(rt);
   // 切换新协程和当前正在运行的协程
   rt_swap(curr_rt, rt);
 };
 
+// 作为协程的启动函数
+static int routineRealEntryFunc(Routine * rt, void *) {
+  printf("exec routine entry func\n");
+  // 执行协程的具体行为
+	if(rt->func_) {
+		rt->func_(rt->arg_);
+	}
+  // 当这就执行结束了
+	rt->is_stop_ = true;
+
+  // 执行完了退出cpu
+	rt_yield_env(rt->env_);
+
+	return 0;
+}
+
 void rt_yield(Routine* co) {};
 void rt_yield_ct() {};
+
+void rt_yield_env(RoutineThreadEnv* env) {
+  // 当前协程的调用协程
+	Routine *last = env->call_stack_[env->call_stack_size_ - 2];
+  // 当前协程
+	Routine *curr = env->call_stack_[env->call_stack_size_ - 1];
+
+  // 调用栈减小
+	env->call_stack_size_--;
+
+  // 切换上下文
+	rt_swap(curr, last);
+};
+
 void rt_release(Routine* co) {};
 void rt_reset(Routine* co) {};
 
@@ -84,12 +120,48 @@ void rt_swap(Routine* curr, Routine* pending_rt) {
   }
 }
 
-RtCond* rt_cond_alloc() { return nullptr; }
+RoutineCond* rt_cond_alloc() { return nullptr; }
 
-void rt_cond_wait(RtCond* cond, int timeout) {}
-void rt_cond_signal(RtCond* cond) {}
-void rt_cond_broadcast(RtCond* cond) {}
+int rt_cond_wait(RoutineCond* cond, int timeout) {
+  auto wait_item = new RoutineCondWaitItem();
+  wait_item->bind_rt_ = get_curr_routine();
+  wait_item->wait_cb_ = [](Routine* rt){
+    // rt_resume会让协程回到下面的yield之后
+	  rt_resume(rt);
+  };
+
+  int ret = cond->add_wait_item(wait_item); 
+  if (ret != 0) {
+    delete wait_item;
+    return ret;
+  }
+  // 让出cpu
+	rt_yield_ct();
+
+  // 执行到这里证明，重新拿到了cpu的执行权了，因此删掉对条件变量的等待
+  cond->remove(wait_item);
+  delete wait_item;
+
+	return 0;
+}
+
+uint64_t get_timems() {
+  return 0;
+}
+
+void rt_cond_signal(RoutineCond* cond) {}
+void rt_cond_broadcast(RoutineCond* cond) {}
 
 int rt_poll(EventLoop* ctx, PollFD fds[], int timeout_ms) { return 0; }
 
 void rt_eventloop(EventLoop* ctx, EventLoopFunc* func, void* arg) {}
+
+Routine* get_curr_routine() {
+  auto env = get_curr_thread_env();
+  if (!env) {
+    return nullptr;
+  }
+
+  return env->call_stack_[env->call_stack_size_-1];
+}
+

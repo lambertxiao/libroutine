@@ -19,15 +19,18 @@ struct RoutineAttr {
   }
 } __attribute__((packed));
 
+// 这是用户定义的协程执行方法
 typedef void* (*RoutineFunc)(void*);
+// 这是实际让cpu执行的协程方法
+typedef void* (*RoutineEntryFunc)(void* s, void* s2);
 
 class Routine {
  public:
+  bool is_main_;
   RoutineThreadEnv* env_;
   RoutineCtx ctx_;
   RoutineFunc func_;
   void* arg_;
-  bool is_main_;
 
   bool is_start_;
   bool is_stop_;
@@ -47,13 +50,13 @@ class Routine {
           RoutineFunc func, void* arg);
 
   // 初始化上下文
-  void init_ctx();
+  void init_ctx(RoutineEntryFunc func);
   void save_stack_to_buff();
 };
 
 struct EventLoopFunc {};
 struct PollFD {};
-struct RtCond {};
+
 
 // 初始化协程上下文
 Routine* rt_self();
