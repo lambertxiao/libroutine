@@ -45,6 +45,7 @@ class Routine {
 
   // 栈顶指针, todo 这玩意为什么不放stackmem里
   char* stack_sp_;
+  bool enable_hook_sys_;
 
   Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr,
           RoutineFunc func, void* arg);

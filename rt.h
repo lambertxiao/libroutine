@@ -29,6 +29,11 @@ int rt_cond_wait(RoutineCond* cond, int timeout);
 int rt_cond_signal(RoutineCond* cond);
 int rt_cond_broadcast(RoutineCond* cond);
 
+// 在某个协程中调用，可hook掉阻塞的系统调用
+void rt_enable_hook_sys();  
+void rt_disable_hook_sys();  
+bool rt_is_enable_sys_hook();
+
 Routine* get_curr_routine();
 int rt_poll(EventLoop* ctx, PollFD fds[], int timeout_ms);
 void rt_eventloop(EventLoop* ctx, EventLoopFunc* func, void* arg);

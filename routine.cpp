@@ -24,7 +24,8 @@ Routine::Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr,
       stack_buff_(nullptr),
       stack_buff_len_(0),
       is_start_(false),
-      is_stop_(false) {
+      is_stop_(false),
+      enable_hook_sys_(false) {
 
   RoutineAttr at;
   if (attr) {

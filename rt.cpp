@@ -181,3 +181,16 @@ Routine* get_curr_routine() {
 
   return env->call_stack_[env->call_stack_size_ - 1];
 }
+
+void rt_disable_hook_sys() {
+  auto rt = get_curr_routine();
+  if (rt) {
+    rt->enable_hook_sys_ = false;
+  }
+} 
+
+bool rt_is_enable_sys_hook() {
+  auto rt = get_curr_routine();
+  return rt && rt->enable_hook_sys_;
+}
+

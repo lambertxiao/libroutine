@@ -26,8 +26,7 @@ class TimeWheel {
 
 typedef void (*TimeCallBack)(TimeWheelSlotLinkItem*);
 
-class TimeWheelSlotLinkItem {
- public:
+struct TimeWheelSlotLinkItem {
   enum {
     eMaxTimeout = 40 * 1000  // 40s
   };
