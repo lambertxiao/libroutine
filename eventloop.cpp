@@ -1,11 +1,10 @@
 #include <stdio.h>
 #include "eventloop.h"
-#include "epoll.h"
 #include "rt.h"
 #include "common.h"
 
 EventLoop::EventLoop() {
-  epfd_ = rt_epoll_create(ep_size_);
+  epfd_ = epoll_create(ep_size_);
   // todo 改为多级时间轮
   time_wheel_ = new TimeWheel(60 * 1000);
   active_list_ = new TimeWheelSlotLink();
@@ -22,6 +21,14 @@ EventLoop::~EventLoop() {
   if (time_wheel_) {
     delete time_wheel_;
   }
+}
+
+int EventLoop::poll_wait(epoll_event* events, int maxevents, int timeout) {
+  return epoll_wait(epfd_, events, maxevents, timeout);
+}
+
+int EventLoop::poll_ctl(int op, int fd, epoll_event *ev) {
+  return epoll_ctl(epfd_, op, fd, ev);
 }
 
 int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, poll_func func) {
@@ -51,7 +58,7 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, poll_func 
 
     if (fds[i].fd > -1) {
       ev.data.ptr = item;
-      int ret = rt_epoll_ctl(epfd_, EPOLL_CTL_ADD, fds[i].fd, &ev);
+      int ret = poll_ctl(EPOLL_CTL_ADD, fds[i].fd, &ev);
       if (ret < 0) {
         // free()
         return func(fds, nfds, timeout_ms);

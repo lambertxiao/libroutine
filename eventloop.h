@@ -21,6 +21,9 @@ class EventLoop {
  
   // 轮训fds，如果有设置超时，由于单线程里不能阻塞操作，需要将回调设置到时间轮上
   int poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, poll_func func);
+
+  int poll_wait(epoll_event* events, int maxevents, int timeout);
+  int poll_ctl(int op, int fd, epoll_event *ev);
 };
 
 struct PollFdItem;
