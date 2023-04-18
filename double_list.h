@@ -2,47 +2,47 @@
 #define LIBROUTINE_DOUBLELIST_H_
 
 template <typename T>
-class Node {
- public:
-  T data;
-  Node<T>* next;
-  Node<T>* prev;
-
-  Node(T data) {
-    this->data = data;
-    this->next = nullptr;
-    this->prev = nullptr;
-  }
-};
-
-template <typename T>
 class DoublyLinkedList {
  public:
-  Node<T>* head;
-  Node<T>* tail;
+  T* head;
+  T* tail;
 
   DoublyLinkedList() {
-    this->head = new Node<T>();
-    this->tail = new Node<T>();
+    this->head = new T();
+    this->tail = new T();
     this->head->next = this->tail;
     this->tail->prev = this->head;
   }
 
-  void addFront(Node<T> newNode) {
+  void add_front(T* newNode) {
+    newNode->link_ = this;
     newNode->next = this->head->next;
     newNode->prev = this->head;
     this->head->next->prev = newNode;
     this->head->next = newNode;
   }
 
-  void addBack(Node<T> newNode) {
+  void add_back(T* newNode) {
+    newNode->link_ = this;
     newNode->next = this->tail;
     newNode->prev = this->tail->prev;
     this->tail->prev->next = newNode;
     this->tail->prev = newNode;
   }
 
-  void deleteNode(Node<T>* node) {
+  T* pop_front() {
+    if (this->head->next == this->tail) {
+      return nullptr;
+    }
+    auto first = this->head->next;
+    this->head->next = first->next;
+    first->next->prev = this->head;
+    first->prev = nullptr;
+
+    return first;
+  }
+
+  void delete_node(T* node) {
     if (node == this->head || node == this->tail) {
       return;
     } else {
@@ -51,4 +51,19 @@ class DoublyLinkedList {
     }
   }
 };
+
+template <typename T>
+class DoublyLinkedListNode {
+ public:
+  T* next;
+  T* prev;
+  DoublyLinkedList<T>* link_;
+
+  DoublyLinkedListNode () {
+    this->next = nullptr;
+    this->prev = nullptr;
+    this->link_ = nullptr;
+  }
+};
 #endif
+

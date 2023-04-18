@@ -171,7 +171,9 @@ int rt_cond_broadcast(RoutineCond* cond) { return cond->broadcast(); }
 
 int rt_poll(EventLoop* ctx, PollFD fds[], int timeout_ms) { return 0; }
 
-void rt_eventloop(EventLoop* ctx, EventLoopFunc* func, void* arg) {}
+void rt_eventloop(EventLoop* ctx, EventLoopFunc* func, void* arg) {
+  ctx->loop();
+}
 
 Routine* get_curr_routine() {
   auto env = get_curr_thread_env();
@@ -187,10 +189,9 @@ void rt_disable_hook_sys() {
   if (rt) {
     rt->enable_hook_sys_ = false;
   }
-} 
+}
 
 bool rt_is_enable_sys_hook() {
   auto rt = get_curr_routine();
   return rt && rt->enable_hook_sys_;
 }
-

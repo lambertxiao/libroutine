@@ -25,6 +25,11 @@ int TimeWheel::add_item(TimeWheelSlotLinkItem* item) {
     slots_[pos] = new TimeWheelSlotLink();
   }
 
-  slots_[pos]->emplace_back(item);
+  slots_[pos]->add_back(item);
   return 0;
 }
+
+void TimeWheel::timeout_takeaway(TimeWheelSlotLink* link) {
+  
+}
+
