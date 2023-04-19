@@ -57,7 +57,7 @@ Routine::Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr,
   ctx_.ss_sp = stack_mem->stack_buffer_;
   ctx_.ss_size = at.stack_size;
 
-  // lp->cEnableSysHook = 0;
+  enable_hook_sys_ = false;
   is_share_stack = at.share_stack != nullptr;
 };
 

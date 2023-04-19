@@ -48,6 +48,8 @@ class DoublyLinkedList {
     } else {
       node->prev->next = node->next;
       node->next->prev = node->prev;
+      node->prev = nullptr;
+      node->next = nullptr;
     }
   }
 };
@@ -59,11 +61,10 @@ class DoublyLinkedListNode {
   T* prev;
   DoublyLinkedList<T>* link_;
 
-  DoublyLinkedListNode () {
+  DoublyLinkedListNode() {
     this->next = nullptr;
     this->prev = nullptr;
     this->link_ = nullptr;
   }
 };
 #endif
-

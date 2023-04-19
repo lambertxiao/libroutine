@@ -6,15 +6,15 @@
 #include <vector>
 #include "double_list.h"
 
-class TimeWheelSlotLinkItem;
+class TimeWheelSlotItem;
 
 // 时间轮格子上的链表，需要频繁增删，因此用list
-class TimeWheelSlotLink : public DoublyLinkedList<TimeWheelSlotLinkItem> {};
+class TimeWheelSlotLink : public DoublyLinkedList<TimeWheelSlotItem> {};
 
 class TimeWheel {
  public:
   // 时间轮槽，每一个槽里是一个双端队列
-  // slots的大小是初始化决定的，不会扩所容，因此可以用vector实现
+  // slots的大小是初始化决定的，不会扩缩容，因此可以用vector实现
   std::vector<TimeWheelSlotLink*> slots_;
   // 轮上有多少个槽，一个槽1ms
   int slot_cnt_;
@@ -25,22 +25,18 @@ class TimeWheel {
   uint64_t curr_slot_;
 
   TimeWheel(int slot_cnt);
-  int add_item(TimeWheelSlotLinkItem* item);
-  void timeout_takeaway(TimeWheelSlotLink* link);
+  int add_item(TimeWheelSlotItem* item);
+  // 将时间轮前进到当前时间，同时将超时事件取出，放到link上
+  void time_forward(TimeWheelSlotLink* link, uint64_t now);
 };
 
-typedef void (*TimeCallBack)(TimeWheelSlotLinkItem*);
+typedef void (*TimeCallBack)(TimeWheelSlotItem*);
 
-struct TimeWheelSlotLinkItem : public DoublyLinkedListNode<TimeWheelSlotLinkItem> {
+struct TimeWheelSlotItem
+    : public DoublyLinkedListNode<TimeWheelSlotItem> {
   enum {
     eMaxTimeout = 40 * 1000  // 40s
   };
-  // 前后节点
-  // TimeWheelSlotLinkItem* pPrev;
-  // TimeWheelSlotLinkItem* pNext;
-
-  // 指向节点所在链表
-  // TimeWheelSlotLink link_;
 
   // 到期时间
   uint64_t timeout_ms_;

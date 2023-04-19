@@ -16,7 +16,7 @@ class RoutineCondWaitItem {
   Routine* bind_rt_;  // 绑定的协程，是指向的协程正在进行等待
   RoutineCallBack wait_cb_;
   int timeout_;
-  TimeWheelSlotLinkItem* timeitem_;
+  TimeWheelSlotItem timeitem_;
 };
 
 class RoutineCond {

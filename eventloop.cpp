@@ -27,12 +27,11 @@ EventLoop::~EventLoop() {
 
 void EventLoop::loop() {
   while (true) {
-    // 1. 找一下epoll上有没有事发生
+    // 1. 找一下epoll上有没有事发生，只等1ms
     int ret = poll_wait(events_, ep_size_, 1);
 
-
     for (int i = 0; i < ret; i++) {
-      auto item = (TimeWheelSlotLinkItem*)events_[i].data.ptr;
+      auto item = (TimeWheelSlotItem*)events_[i].data.ptr;
       // 这里的item可能是PollFdGroup，也可能是PollFdItem
       if (item->cb_pre_) {
         item->cb_pre_(item);
@@ -40,8 +39,9 @@ void EventLoop::loop() {
       active_list_->add_back(item);
     }
 
+    auto now = get_time_ms();
     // 2. 找一下时间轮上是否有事件超时了
-    time_wheel_->timeout_takeaway(timeout_list_);
+    time_wheel_->time_forward(timeout_list_, now);
 
     // 3. 无论是活跃事件还是超时事件都执行回调
     TimeWheelSlotLink* links[2] = {active_list_, timeout_list_};
@@ -67,15 +67,15 @@ int EventLoop::poll_ctl(int op, int fd, epoll_event* ev) {
   return epoll_ctl(epfd_, op, fd, ev);
 }
 
-static void OnPollFdGroupDone(TimeWheelSlotLinkItem* item) {
+static void OnPollFdGroupDone(TimeWheelSlotItem* item) {
   auto routine = (Routine*)item->arg_;
   rt_resume(routine);
 }
 
 int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms,
-                    sys_poll_func func) {
+                    sys_poll_func poll_func) {
   if (timeout_ms == 0) {
-    return func(fds, nfds, 0);
+    return poll_func(fds, nfds, 0);
   }
   if (timeout_ms < 0) {
     timeout_ms = INT32_MAX;
@@ -104,7 +104,7 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms,
       int ret = poll_ctl(EPOLL_CTL_ADD, fds[i].fd, &ev);
       if (ret < 0) {
         // free()
-        return func(fds, nfds, timeout_ms);
+        return poll_func(fds, nfds, timeout_ms);
       }
     }
   }

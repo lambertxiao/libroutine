@@ -33,7 +33,7 @@ class EventLoop {
 
 struct PollFdItem;
 // 这是多个fd在时间轮上的结构
-struct PollFdGroup : public TimeWheelSlotLinkItem {
+struct PollFdGroup : public TimeWheelSlotItem {
 
   // 待监控的fd
   struct pollfd* fds_;
@@ -53,7 +53,7 @@ struct PollFdGroup : public TimeWheelSlotLinkItem {
 };
 
 // 这是单个fd在时间轮上的结构
-struct PollFdItem : public TimeWheelSlotLinkItem {
+struct PollFdItem : public TimeWheelSlotItem {
   // 描述了哪个fd关心什么事件，收到了什么事件
   struct pollfd* fd_;
   PollFdGroup* group_;
