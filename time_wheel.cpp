@@ -14,11 +14,6 @@ int TimeWheel::add_item(TimeWheelSlotItem* item) {
   }
 
   uint64_t diff = item->timeout_ms_ - curr_time_ms_;
-  if ((int)diff > slot_cnt_) {
-    printf("add item to timewheel error, diff:%lu\n", diff);
-    return -1;
-  }
-
   int pos = (curr_slot_ + diff) % slot_cnt_;
 
   auto link = slots_.at(pos);
@@ -42,6 +37,7 @@ void TimeWheel::time_forward(TimeWheelSlotLink* timeout_link, uint64_t now) {
     auto curr = link->head->next;
     while (curr != link->tail) {
       if (curr->timeout_ms_ > now) {
+        curr = curr->next;
         continue;
       }
 

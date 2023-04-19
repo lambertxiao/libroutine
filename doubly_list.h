@@ -14,6 +14,11 @@ class DoublyLinkedList {
     this->tail->prev = this->head;
   }
 
+  ~DoublyLinkedList() {
+    delete this->head;
+    delete this->tail;
+  }
+
   void add_front(T* newNode) {
     newNode->link_ = this;
     newNode->next = this->head->next;
@@ -38,6 +43,7 @@ class DoublyLinkedList {
     this->head->next = first->next;
     first->next->prev = this->head;
     first->prev = nullptr;
+    first->next = nullptr;
 
     return first;
   }
