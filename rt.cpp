@@ -75,6 +75,7 @@ void rt_swap(Routine* curr, Routine* pending_rt) {
     return;
   }
 
+  printf("swap routine %p => %p\n", curr, pending_rt);
   RoutineThreadEnv* env = curr->env_;
 
   // 将当前协程的栈指针设置为当前栈顶的地址。这里使用一个局部变量c的地址作为栈指针，因为c是一个自动变量，它的地址就是当前栈顶的地址。
@@ -194,4 +195,9 @@ void rt_disable_hook_sys() {
 bool rt_is_enable_sys_hook() {
   auto rt = get_curr_routine();
   return rt && rt->enable_hook_sys_;
+}
+
+ShareStack* rt_alloc_share_stack(int count, uint64_t size) {
+  auto ss = new ShareStack(count, size);
+  return ss;
 }

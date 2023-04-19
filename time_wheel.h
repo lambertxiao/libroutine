@@ -32,8 +32,7 @@ class TimeWheel {
 
 typedef void (*TimeCallBack)(TimeWheelSlotItem*);
 
-struct TimeWheelSlotItem
-    : public DoublyLinkedListNode<TimeWheelSlotItem> {
+struct TimeWheelSlotItem : public DoublyLinkedListNode<TimeWheelSlotItem> {
   enum {
     eMaxTimeout = 40 * 1000  // 40s
   };

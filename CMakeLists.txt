@@ -14,6 +14,10 @@ enable_language(C ASM)
 aux_source_directory(. SRC_FILES)
 set(SRC_FILES ${SRC_FILES} "./rtctx_swap.S")
 message(${SRC_FILES})
-add_executable(example_cond example_cond.cpp ${SRC_FILES})
+
+add_executable(example_cond example/example_cond.cpp ${SRC_FILES})
 target_link_libraries("example_cond" dl)
+
+add_executable(example_copystack example/example_copystack.cpp ${SRC_FILES})
+target_link_libraries("example_copystack" dl)
 

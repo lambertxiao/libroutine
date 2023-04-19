@@ -23,9 +23,12 @@ class StackMem {
 class ShareStack {
  public:
   uint32_t alloc_idx_;
-  int stack_size_;
+  uint64_t stack_size_;
   int count_;
   StackMem** stack_array_;
+
+  ShareStack(int count, uint64_t stack_size_);
+  ~ShareStack();
 
   StackMem* alloc_stack_mem();
 };
