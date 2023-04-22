@@ -4,6 +4,7 @@
 #include <string.h>
 #include "routine_ctx.h"
 #include "routine_cond.h"
+#include "logger.h"
 
 extern "C" {
 extern void rtctx_swap(RoutineCtx*, RoutineCtx*) asm("rtctx_swap");
@@ -33,7 +34,7 @@ void rt_resume(Routine* rt) {
 
 // 作为协程的启动函数
 static int routineRealEntryFunc(Routine* rt, void*) {
-  printf("exec routine entry func\n");
+  LOG_DEBUG("exec routine:%p", rt);
   // 执行协程的具体行为
   if (rt->func_) {
     rt->func_(rt->arg_);
@@ -75,7 +76,7 @@ void rt_swap(Routine* curr, Routine* pending_rt) {
     return;
   }
 
-  printf("swap routine %p => %p\n", curr, pending_rt);
+  LOG_DEBUG("swap routine %p => %p", curr, pending_rt);
   RoutineThreadEnv* env = curr->env_;
 
   // 将当前协程的栈指针设置为当前栈顶的地址。这里使用一个局部变量c的地址作为栈指针，因为c是一个自动变量，它的地址就是当前栈顶的地址。
@@ -113,15 +114,12 @@ void rt_swap(Routine* curr, Routine* pending_rt) {
   Routine* update_occupy_co = env->occupy_rt_;
   Routine* update_pending_co = env->pending_rt_;
 
-  if (update_occupy_co && update_pending_co &&
-      update_occupy_co != update_pending_co) {
+  if (update_occupy_co && update_pending_co && update_occupy_co != update_pending_co) {
     // 进了这个判断代表前面做了协程切换
     // resume stack buffer
-    if (update_pending_co->stack_buff_ &&
-        update_pending_co->stack_buff_len_ > 0) {
+    if (update_pending_co->stack_buff_ && update_pending_co->stack_buff_len_ > 0) {
       // 从缓冲区中恢复栈内容
-      memcpy(update_pending_co->stack_sp_, update_pending_co->stack_buff_,
-             update_pending_co->stack_buff_len_);
+      memcpy(update_pending_co->stack_sp_, update_pending_co->stack_buff_, update_pending_co->stack_buff_len_);
     }
   }
 }
@@ -170,11 +168,14 @@ int rt_cond_signal(RoutineCond* cond) { return cond->signal(); }
 
 int rt_cond_broadcast(RoutineCond* cond) { return cond->broadcast(); }
 
-int rt_poll(EventLoop* ctx, PollFD fds[], int timeout_ms) { return 0; }
-
-void rt_eventloop(EventLoop* ctx, EventLoopFunc* func, void* arg) {
-  ctx->loop();
+void rt_enable_hook_sys() {
+  auto rt = get_curr_routine();
+  if (rt) {
+    rt->enable_hook_sys_ = true;
+  }
 }
+
+void rt_eventloop(EventLoop* ctx, EventLoopFunc* func, void* arg) { ctx->loop(); }
 
 Routine* get_curr_routine() {
   auto env = get_curr_thread_env();

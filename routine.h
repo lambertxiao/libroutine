@@ -47,8 +47,7 @@ class Routine {
   char* stack_sp_;
   bool enable_hook_sys_;
 
-  Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr,
-          RoutineFunc func, void* arg);
+  Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr, RoutineFunc func, void* arg);
 
   // 初始化上下文
   void init_ctx(RoutineEntryFunc func);
@@ -56,11 +55,10 @@ class Routine {
 };
 
 struct EventLoopFunc {};
-struct PollFD {};
 
 // 初始化协程上下文
 Routine* rt_self();
 
-EventLoop* get_thread_eventloop();
+EventLoop* rt_get_thread_eventloop();
 
 #endif

@@ -38,7 +38,7 @@ bool rt_is_enable_sys_hook();
 ShareStack* rt_alloc_share_stack(int count, uint64_t size);
 
 Routine* get_curr_routine();
-int rt_poll(EventLoop* ctx, PollFD fds[], int timeout_ms);
+// int rt_poll(EventLoop* ctx, PollFD fds[], int timeout_ms);
 void rt_eventloop(EventLoop* ctx, EventLoopFunc* func, void* arg);
 
 #endif

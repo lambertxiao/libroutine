@@ -2,6 +2,7 @@
 #include "eventloop.h"
 #include "rt.h"
 #include "common.h"
+#include "logger.h"
 
 EventLoop::EventLoop() {
   epfd_ = epoll_create(ep_size_);
@@ -45,6 +46,10 @@ void EventLoop::loop() {
 
     // 3. 无论是活跃事件还是超时事件都执行回调
     TimeWheelSlotLink* links[2] = {active_list_, timeout_list_};
+
+    if (active_list_->size() != 0 || timeout_list_->size() != 0) {
+      LOG_DEBUG("run loop, active_cnt: %d, timeout_cnt:%d", active_list_->size(), timeout_list_->size());
+    }
     for (auto alink : links) {
       while (true) {
         auto item = alink->pop_front();
@@ -59,21 +64,16 @@ void EventLoop::loop() {
   }
 }
 
-int EventLoop::poll_wait(epoll_event* events, int maxevents, int timeout) {
-  return epoll_wait(epfd_, events, maxevents, timeout);
-}
+int EventLoop::poll_wait(epoll_event* events, int maxevents, int timeout) { return epoll_wait(epfd_, events, maxevents, timeout); }
 
-int EventLoop::poll_ctl(int op, int fd, epoll_event* ev) {
-  return epoll_ctl(epfd_, op, fd, ev);
-}
+int EventLoop::poll_ctl(int op, int fd, epoll_event* ev) { return epoll_ctl(epfd_, op, fd, ev); }
 
 static void OnPollFdGroupDone(TimeWheelSlotItem* item) {
   auto routine = (Routine*)item->arg_;
   rt_resume(routine);
 }
 
-int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms,
-                    sys_poll_func poll_func) {
+int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_func poll_func) {
   if (timeout_ms == 0) {
     return poll_func(fds, nfds, 0);
   }
@@ -115,15 +115,13 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms,
   // 整组时间挂在时间轮上
   int ret = time_wheel_->add_item(group);
   if (ret != 0) {
-    printf("add timewheel error\n");
+    LOG_ERROR("add timewheel error");
+    return ret;
   } else {
     // 交出cpu
     rt_yield_ct();
     // 等上一个方法回来时，重新拿到了cpu
   }
-
-  // 从时间轮上移除
-  //
 
   // 将事件从epoll上移除
   for (int i = 0; i < nfds; i++) {

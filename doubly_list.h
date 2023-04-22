@@ -6,12 +6,14 @@ class DoublyLinkedList {
  public:
   T* head;
   T* tail;
+  int cnt;
 
   DoublyLinkedList() {
     this->head = new T();
     this->tail = new T();
     this->head->next = this->tail;
     this->tail->prev = this->head;
+    this->cnt = 0;
   }
 
   ~DoublyLinkedList() {
@@ -25,6 +27,7 @@ class DoublyLinkedList {
     newNode->prev = this->head;
     this->head->next->prev = newNode;
     this->head->next = newNode;
+    this->cnt++;
   }
 
   void add_back(T* newNode) {
@@ -33,6 +36,7 @@ class DoublyLinkedList {
     newNode->prev = this->tail->prev;
     this->tail->prev->next = newNode;
     this->tail->prev = newNode;
+    this->cnt++;
   }
 
   T* pop_front() {
@@ -44,6 +48,7 @@ class DoublyLinkedList {
     first->next->prev = this->head;
     first->prev = nullptr;
     first->next = nullptr;
+    this->cnt--;
 
     return first;
   }
@@ -56,7 +61,12 @@ class DoublyLinkedList {
       node->next->prev = node->prev;
       node->prev = nullptr;
       node->next = nullptr;
+      this->cnt--;
     }
+  }
+
+  int size() {
+    return this->cnt;
   }
 };
 

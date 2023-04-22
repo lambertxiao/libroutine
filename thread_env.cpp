@@ -26,10 +26,6 @@ RoutineThreadEnv* get_curr_thread_env() {
   return routineEnvPerThread;
 }
 
-Routine* RoutineThreadEnv::get_curr_routine() {
-  return call_stack_[call_stack_size_ - 1];
-}
+Routine* RoutineThreadEnv::get_curr_routine() { return call_stack_[call_stack_size_ - 1]; }
 
-void RoutineThreadEnv::push_to_call_stack(Routine* r) {
-  call_stack_[call_stack_size_++] = r;
-}
+void RoutineThreadEnv::push_to_call_stack(Routine* r) { call_stack_[call_stack_size_++] = r; }

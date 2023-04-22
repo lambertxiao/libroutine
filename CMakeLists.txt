@@ -21,3 +21,9 @@ target_link_libraries("example_cond" dl)
 add_executable(example_copystack example/example_copystack.cpp ${SRC_FILES})
 target_link_libraries("example_copystack" dl)
 
+add_executable(example_echosvc example/example_echosvr.cpp ${SRC_FILES})
+target_link_libraries("example_echosvc" dl)
+
+add_executable(example_echocli example/example_echocli.cpp ${SRC_FILES})
+target_link_libraries("example_echocli" dl)
+

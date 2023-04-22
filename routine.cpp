@@ -15,17 +15,8 @@ enum {
   kRSP = 13,
 };
 
-Routine::Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr,
-                 RoutineFunc func, void* arg)
-    : is_main_(is_main),
-      env_(env),
-      func_(func),
-      arg_(arg),
-      stack_buff_(nullptr),
-      stack_buff_len_(0),
-      is_start_(false),
-      is_stop_(false),
-      enable_hook_sys_(false) {
+Routine::Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr, RoutineFunc func, void* arg)
+    : is_main_(is_main), env_(env), func_(func), arg_(arg), stack_buff_(nullptr), stack_buff_len_(0), is_start_(false), is_stop_(false), enable_hook_sys_(false) {
 
   RoutineAttr at;
   if (attr) {
@@ -97,4 +88,4 @@ void Routine::save_stack_to_buff() {
   memcpy(stack_buff_, stack_sp_, len);
 }
 
-EventLoop* get_thread_eventloop() { return get_curr_thread_env()->loop_; }
+EventLoop* rt_get_thread_eventloop() { return get_curr_thread_env()->loop_; }

@@ -68,6 +68,6 @@ int main() {
   rt_resume(producer_routine);
 
   printf("run eventloop");
-  rt_eventloop(get_thread_eventloop(), NULL, NULL);
+  rt_eventloop(rt_get_thread_eventloop(), NULL, NULL);
   return 0;
 }

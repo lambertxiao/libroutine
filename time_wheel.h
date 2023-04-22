@@ -26,6 +26,7 @@ class TimeWheel {
 
   TimeWheel(int slot_cnt);
   int add_item(TimeWheelSlotItem* item);
+  void remove_item(TimeWheelSlotItem* item);
   // 将时间轮前进到当前时间，同时将超时事件取出，放到link上
   void time_forward(TimeWheelSlotLink* link, uint64_t now);
 };
