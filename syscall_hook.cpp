@@ -25,8 +25,9 @@
 #include <time.h>
 #include <unordered_map>
 #include "rt.h"
+#include "logger.h"
 
-// 定义了一堆的函数指针
+// 记录阻塞的系统调用的地址 
 typedef int (*poll_pfn_t)(pollfd fds[], nfds_t nfds, int timeout);
 poll_pfn_t g_sys_poll_func = (poll_pfn_t)dlsym(RTLD_NEXT, "poll");
 
@@ -41,14 +42,12 @@ static write_pfn_t g_sys_write_func = (write_pfn_t)dlsym(RTLD_NEXT, "write");
 
 // dlsym函数是一个C语言的动态链接库函数，用于在运行时动态地获取一个共享库（或DLL）中的函数或变量地址
 // 下面的逻辑将所有同步的系统调用如connect、send等函数的地址先保存了下来
-
-// 接受一个函数名，将该函数替换掉，如传入connect函数名，则将g_sys_connect_func
 #define HOOK_SYS_FUNC(name)                                      \
   if (!g_sys_##name##_func) {                                    \
     g_sys_##name##_func = (name##_pfn_t)dlsym(RTLD_NEXT, #name); \
   }
 
-extern int co_poll_inner(EventLoop* ctx, struct pollfd fds[], nfds_t nfds, int timeout, poll_pfn_t pollfunc);
+// extern int co_poll_inner(EventLoop* ctx, struct pollfd fds[], nfds_t nfds, int timeout, poll_pfn_t pollfunc);
 
 // 单线程非阻塞的poll，在给定的超时时间内，轮训fds
 int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
@@ -141,7 +140,7 @@ int connect(int fd, const struct sockaddr* address, socklen_t address_len) {
 }
 
 ssize_t read(int fd, void* buf, size_t nbyte) {
-  printf("hook read\n");
+  LOG_DEBUG("exec hook read\n");
   HOOK_SYS_FUNC(read);
 
   if (!rt_is_enable_sys_hook()) {
@@ -154,21 +153,24 @@ ssize_t read(int fd, void* buf, size_t nbyte) {
   // 读事件，错误事件，断开事件
   pf.events = (POLLIN | POLLERR | POLLHUP);
 
-  // 这里会告诉epoll，在有这个fd的事件的时候回调我们，底下会设置好epoll状态后，就交出cpu
   int pollret = poll(&pf, 1, 1000);
+  if (pollret < 0) {
+    LOG_ERROR("poll error in read, fd:%d ret:%d", fd, pollret);
+    return pollret;
+  }
 
   // 到了这里，重新拿到了cpu的执行权, 此时fd已经可读了，将数据读出
   ssize_t readret = g_sys_read_func(fd, (char*)buf, nbyte);
 
   if (readret < 0) {
-    printf("read error, ret:%ld\n", readret);
+    LOG_ERROR("read error, ret:%ld\n", readret);
   }
 
   return readret;
 }
 
 ssize_t write(int fd, const void* buf, size_t nbyte) {
-  printf("hook write\n");
+  LOG_DEBUG("exec hook write\n");
   HOOK_SYS_FUNC(write);
 
   if (!rt_is_enable_sys_hook()) {
@@ -189,7 +191,6 @@ ssize_t write(int fd, const void* buf, size_t nbyte) {
   }
   // 循环，直到数据全部写完
   while (wrotelen < nbyte) {
-
     struct pollfd pf = {0};
     pf.fd = fd;
     // 关注可写事件，错误事件，断开事件

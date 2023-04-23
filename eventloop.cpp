@@ -34,8 +34,8 @@ void EventLoop::loop() {
     for (int i = 0; i < ret; i++) {
       auto item = (TimeWheelSlotItem*)events_[i].data.ptr;
       // 这里的item可能是PollFdGroup，也可能是PollFdItem
-      if (item->cb_pre_) {
-        item->cb_pre_(item);
+      if (item->group_member_cb_) {
+        item->group_member_cb_(item);
       }
       active_list_->add_back(item);
     }
@@ -48,7 +48,7 @@ void EventLoop::loop() {
     TimeWheelSlotLink* links[2] = {active_list_, timeout_list_};
 
     if (active_list_->size() != 0 || timeout_list_->size() != 0) {
-      LOG_DEBUG("run loop, active_cnt: %d, timeout_cnt:%d", active_list_->size(), timeout_list_->size());
+      // LOG_DEBUG("run loop, active_cnt: %d, timeout_cnt:%d", active_list_->size(), timeout_list_->size());
     }
     for (auto alink : links) {
       while (true) {
@@ -68,9 +68,14 @@ int EventLoop::poll_wait(epoll_event* events, int maxevents, int timeout) { retu
 
 int EventLoop::poll_ctl(int op, int fd, epoll_event* ev) { return epoll_ctl(epfd_, op, fd, ev); }
 
-static void OnPollFdGroupDone(TimeWheelSlotItem* item) {
+static void OnPollGroupDone(TimeWheelSlotItem* item) {
   auto routine = (Routine*)item->arg_;
   rt_resume(routine);
+}
+
+static void OnPollGroupItemDone(TimeWheelSlotItem* item) {
+  PollItem* pitem = (PollItem*)item->arg_;
+  pitem->group_->trigger_cnt_++;
 }
 
 int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_func poll_func) {
@@ -82,28 +87,33 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_f
   }
 
   auto curr_rt = get_curr_routine();
-  auto group = new PollFdGroup();
+  auto group = new PollGroup();
   group->epfd = epfd_;
   group->fds_ = fds;
   group->nfds_ = nfds;
-  group->cb_ = OnPollFdGroupDone;
+  group->cb_ = OnPollGroupDone;
   group->arg_ = curr_rt;
 
   // 告诉epoll我关心这些fd的事件
-  for (int i = 0; i < nfds; i++) {
+  for (uint i = 0; i < nfds; i++) {
     // 这里考虑一下是放堆上好还是放栈上好
-    auto item = new PollFdItem();
+    auto item = new PollItem();
     item->group_ = group;
     item->fd_ = &fds[i];
+    item->group_member_cb_ = OnPollGroupItemDone;
+    item->arg_ = item;
     group->items_.emplace_back(item);
 
     epoll_event& ev = item->events_;
 
     if (fds[i].fd > -1) {
       ev.data.ptr = item;
+      ev.events = fds[i].events;
+      
       int ret = poll_ctl(EPOLL_CTL_ADD, fds[i].fd, &ev);
       if (ret < 0) {
         // free()
+        LOG_DEBUG("epoll_ctl_add error, fd:%d ret:%d", fds[i].fd, ret);
         return poll_func(fds, nfds, timeout_ms);
       }
     }
@@ -124,10 +134,13 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_f
   }
 
   // 将事件从epoll上移除
-  for (int i = 0; i < nfds; i++) {
+  for (uint i = 0; i < nfds; i++) {
     if (fds[i].fd > -1) {
       auto item = group->items_[i];
       int ret = poll_ctl(EPOLL_CTL_DEL, fds[i].fd, &item->events_);
+      if (ret < 0) {
+        LOG_DEBUG("epoll_ctl_del error, fd:%d ret:%d", fds[i].fd, ret);
+      }
     }
   }
 

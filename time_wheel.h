@@ -41,10 +41,8 @@ struct TimeWheelSlotItem : public DoublyLinkedListNode<TimeWheelSlotItem> {
   // 到期时间
   uint64_t timeout_ms_;
 
-  // 准备事件和处理事件的函数指针
-  // OnPreparePfn_t pfnPrepare;
-  // 时间一到，会调用cb(arg)
-  TimeCallBack cb_pre_;
+  // 当该item是某个pollGroup中的成员时，该cb存在, 这个函数的调用必须早于pollGroup的cb的调用 
+  TimeCallBack group_member_cb_;
   TimeCallBack cb_;
   void* arg_;  // arg实际上会是回调的routine
 

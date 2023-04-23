@@ -76,7 +76,7 @@ void rt_swap(Routine* curr, Routine* pending_rt) {
     return;
   }
 
-  LOG_DEBUG("swap routine %p => %p", curr, pending_rt);
+  // LOG_DEBUG("swap routine %p => %p", curr, pending_rt);
   RoutineThreadEnv* env = curr->env_;
 
   // 将当前协程的栈指针设置为当前栈顶的地址。这里使用一个局部变量c的地址作为栈指针，因为c是一个自动变量，它的地址就是当前栈顶的地址。

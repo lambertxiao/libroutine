@@ -30,16 +30,17 @@ class EventLoop {
   int poll_ctl(int op, int fd, epoll_event* ev);
 };
 
-struct PollFdItem;
-// 这是多个fd在时间轮上的结构
-struct PollFdGroup : public TimeWheelSlotItem {
+struct PollItem;
+
+// 多个fd封装在一个group里挂在时间轮上的结构
+struct PollGroup : public TimeWheelSlotItem {
 
   // 待监控的fd
   struct pollfd* fds_;
   // 待监控fd的个数
   nfds_t nfds_;  // typedef unsigned long int nfds_t;
 
-  std::vector<PollFdItem*> items_;
+  std::vector<PollItem*> items_;
 
   // 表示是否将所有事件从epoll实例中分离，等待处理
   int is_all_event_detach;
@@ -52,10 +53,10 @@ struct PollFdGroup : public TimeWheelSlotItem {
 };
 
 // 这是单个fd在时间轮上的结构
-struct PollFdItem : public TimeWheelSlotItem {
+struct PollItem : public TimeWheelSlotItem {
   // 描述了哪个fd关心什么事件，收到了什么事件
   struct pollfd* fd_;
-  PollFdGroup* group_;
+  PollGroup* group_;
   // 发生了什么事件
   struct epoll_event events_;
 };

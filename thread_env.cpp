@@ -2,6 +2,7 @@
 #include "routine.h"
 #include "eventloop.h"
 #include <stdio.h>
+#include "logger.h"
 
 // 定义了一个线程级别的变量
 static __thread RoutineThreadEnv* routineEnvPerThread = NULL;
@@ -9,6 +10,8 @@ static __thread RoutineThreadEnv* routineEnvPerThread = NULL;
 RoutineThreadEnv::RoutineThreadEnv() : call_stack_size_(0) {
   // 创建主协程
   auto main_routine = new Routine(this, true, nullptr, nullptr, nullptr);
+  LOG_DEBUG("create main routine:%p", main_routine);
+
   call_stack_[call_stack_size_++] = main_routine;
   pending_rt_ = nullptr;
   occupy_rt_ = nullptr;

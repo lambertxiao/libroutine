@@ -113,7 +113,6 @@ static void SetAddr(const char *pszIP, const unsigned short shPort, struct socka
   addr.sin_family = AF_INET;
   addr.sin_port = htons(shPort);
   addr.sin_addr.s_addr = inet_addr(pszIP);
-  ;
 }
 
 static int CreateTcpSocket(const unsigned short shPort /* = 0 */, const char *pszIP /* = "*" */, bool bReuse /* = false */) {
@@ -171,9 +170,10 @@ int main(int argc, char *argv[]) {
   }
 
   // 创建一个接受协程
-  Routine *accept_co = NULL;
-  rt_create(&accept_co, NULL, accept_routine, 0);
-  rt_resume(accept_co);
+  Routine *accept_rt = NULL;
+  rt_create(&accept_rt, NULL, accept_routine, 0);
+  printf("create accept_routine %p\n", accept_rt);
+  rt_resume(accept_rt);
 
   rt_eventloop(rt_get_thread_eventloop(), 0, 0);
   exit(0);

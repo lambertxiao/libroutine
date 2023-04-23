@@ -32,17 +32,15 @@ class Routine {
   RoutineFunc func_;
   void* arg_;
 
-  bool is_start_;
-  bool is_stop_;
-  // 是否共享协程栈
-  bool is_share_stack;
-
   StackMem* stack_mem_;
-
   // 当协程退出cpu的时候，需要将栈上的数据缓存在该buff里
   char* stack_buff_;
   uint64_t stack_buff_len_;
 
+  bool is_start_;
+  bool is_stop_;
+  // 是否共享协程栈
+  bool is_share_stack;
   // 栈顶指针, todo 这玩意为什么不放stackmem里
   char* stack_sp_;
   bool enable_hook_sys_;
