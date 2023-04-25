@@ -2,9 +2,13 @@
 #include "common.h"
 #include <stdio.h>
 #include "logger.h"
+#include "unistd.h"
 
-TimeWheel::TimeWheel(int slot_cnt) : 
-  slots_(slot_cnt, new TimeWheelSlotLink()), slot_cnt_(slot_cnt), curr_time_ms_(get_time_ms()), curr_slot_(0) {}
+TimeWheel::TimeWheel(int slot_cnt) :  slot_cnt_(slot_cnt), curr_time_ms_(get_time_ms()), curr_slot_(0) {
+  for (int i = 0; i < slot_cnt_; i++) {
+    slots_.emplace_back(new TimeWheelSlotLink());
+  }
+}
 
 int TimeWheel::add_item(TimeWheelSlotItem* item) {
   // 当前时间小于时间轮的开始时间了，属于异常情况
@@ -17,6 +21,11 @@ int TimeWheel::add_item(TimeWheelSlotItem* item) {
   int pos = (curr_slot_ + diff) % slot_cnt_;
 
   auto link = slots_.at(pos);
+  if (item->link_) {
+    LOG_ERROR("add item invalid %p link %p", item, item->link_);
+    return -1;
+  }
+  
   link->add_back(item);
   return 0;
 }
@@ -28,6 +37,7 @@ void TimeWheel::time_forward(TimeWheelSlotLink* timeout_link, uint64_t now) {
     LOG_DEBUG("time forward error, curr_time_ms_:%ld now:%ld", curr_time_ms_, now);
     return;
   }
+  
   // 过去了多少毫秒
   int cnt = now - curr_time_ms_ + 1;
   if (cnt > slot_cnt_) {
@@ -38,6 +48,8 @@ void TimeWheel::time_forward(TimeWheelSlotLink* timeout_link, uint64_t now) {
     int pos = (curr_slot_ + i) % slot_cnt_;
     auto link = slots_[pos];
     auto curr = link->head->next;
+    auto curr2 = link->head->next;
+
     while (curr != link->tail) {
       if (curr->timeout_ms_ > now) {
         curr = curr->next;
@@ -47,9 +59,12 @@ void TimeWheel::time_forward(TimeWheelSlotLink* timeout_link, uint64_t now) {
       auto node = curr;
       curr = curr->next;
 
+      LOG_DEBUG("node %p expired", node);
       // 先跟原本的链断开
       link->delete_node(node);
       timeout_link->add_back(node);
+
+      // sleep(1);
     }
   }
 

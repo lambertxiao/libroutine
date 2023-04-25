@@ -26,35 +26,29 @@
 #include <unordered_map>
 #include "rt.h"
 #include "logger.h"
+#include "fd_attr.h"
+#include "syscall.h"
 
-// 记录阻塞的系统调用的地址 
-typedef int (*poll_pfn_t)(pollfd fds[], nfds_t nfds, int timeout);
-poll_pfn_t g_sys_poll_func = (poll_pfn_t)dlsym(RTLD_NEXT, "poll");
-
-typedef int (*connect_pfn_t)(int socket, const struct sockaddr* address, socklen_t address_len);
-static connect_pfn_t g_sys_connect_func = (connect_pfn_t)dlsym(RTLD_NEXT, "connect");
-
-typedef ssize_t (*read_pfn_t)(int fildes, void* buf, size_t nbyte);
-static read_pfn_t g_sys_read_func = (read_pfn_t)dlsym(RTLD_NEXT, "read");
-
-typedef ssize_t (*write_pfn_t)(int fildes, const void* buf, size_t nbyte);
-static write_pfn_t g_sys_write_func = (write_pfn_t)dlsym(RTLD_NEXT, "write");
+// 记录阻塞的系统调用的地址
+static poll_pfn_t sys_poll_func = (poll_pfn_t)dlsym(RTLD_NEXT, "poll");
+static connect_pfn_t sys_connect_func = (connect_pfn_t)dlsym(RTLD_NEXT, "connect");
+static read_pfn_t sys_read_func = (read_pfn_t)dlsym(RTLD_NEXT, "read");
+static write_pfn_t sys_write_func = (write_pfn_t)dlsym(RTLD_NEXT, "write");
+static fcntl_pfn_t sys_fcntl_func = (fcntl_pfn_t)dlsym(RTLD_NEXT, "fcntl");
 
 // dlsym函数是一个C语言的动态链接库函数，用于在运行时动态地获取一个共享库（或DLL）中的函数或变量地址
 // 下面的逻辑将所有同步的系统调用如connect、send等函数的地址先保存了下来
 #define HOOK_SYS_FUNC(name)                                      \
-  if (!g_sys_##name##_func) {                                    \
-    g_sys_##name##_func = (name##_pfn_t)dlsym(RTLD_NEXT, #name); \
+  if (!sys_##name##_func) {                                    \
+    sys_##name##_func = (name##_pfn_t)dlsym(RTLD_NEXT, #name); \
   }
-
-// extern int co_poll_inner(EventLoop* ctx, struct pollfd fds[], nfds_t nfds, int timeout, poll_pfn_t pollfunc);
 
 // 单线程非阻塞的poll，在给定的超时时间内，轮训fds
 int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
   HOOK_SYS_FUNC(poll);
 
   if (!rt_is_enable_sys_hook() || timeout == 0) {
-    return g_sys_poll_func(fds, nfds, timeout);
+    return sys_poll_func(fds, nfds, timeout);
   }
 
   // 合并重复的文件描述符
@@ -73,7 +67,7 @@ int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
     pollfds.push_back(pfd);
   }
 
-  int ret = loop->poll(pollfds.data(), pollfds.size(), timeout, g_sys_poll_func);
+  int ret = loop->poll(pollfds.data(), pollfds.size(), timeout, sys_poll_func);
 
   // 更新原始的pollfd结构体数组
   for (size_t i = 0; i < nfds; i++) {
@@ -86,6 +80,7 @@ int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
 }
 
 // 将fd设置为非阻塞
+/*
 int fd_nonblock(int fd) {
   int flags = fcntl(fd, F_GETFL, 0);
   if (flags == -1) {
@@ -98,23 +93,107 @@ int fd_nonblock(int fd) {
   }
   return 0;
 }
+*/
+
+int fcntl(int fd, int cmd, ...) {
+  HOOK_SYS_FUNC(fcntl);
+
+  if (fd < 0) {
+    return -1;
+  }
+
+  va_list arg_list;
+  va_start(arg_list, cmd);
+
+  int ret = -1;
+  auto attr = FdAttrs::get(fd);
+
+  switch (cmd) {
+    case F_DUPFD: {
+      int param = va_arg(arg_list, int);
+      ret = sys_fcntl_func(fd, cmd, param);
+      break;
+    }
+    case F_GETFD: {
+      ret = sys_fcntl_func(fd, cmd);
+      break;
+    }
+    case F_SETFD: {
+      int param = va_arg(arg_list, int);
+      ret = sys_fcntl_func(fd, cmd, param);
+      break;
+    }
+    case F_GETFL: {
+      ret = sys_fcntl_func(fd, cmd);
+      if (attr && !(attr->flags_ & O_NONBLOCK)) {
+        ret = ret & (~O_NONBLOCK);
+      }
+      break;
+    }
+    case F_SETFL: {
+      int param = va_arg(arg_list, int);
+      int flag = param;
+      if (rt_is_enable_sys_hook() && attr) {
+        flag |= O_NONBLOCK;
+      }
+      ret = sys_fcntl_func(fd, cmd, flag);
+      if (0 == ret && attr) {
+        attr->flags_ = param;
+      }
+      break;
+    }
+    case F_GETOWN: {
+      ret = sys_fcntl_func(fd, cmd);
+      break;
+    }
+    case F_SETOWN: {
+      int param = va_arg(arg_list, int);
+      ret = sys_fcntl_func(fd, cmd, param);
+      break;
+    }
+    case F_GETLK: {
+      struct flock* param = va_arg(arg_list, struct flock*);
+      ret = sys_fcntl_func(fd, cmd, param);
+      break;
+    }
+    case F_SETLK: {
+      struct flock* param = va_arg(arg_list, struct flock*);
+      ret = sys_fcntl_func(fd, cmd, param);
+      break;
+    }
+    case F_SETLKW: {
+      struct flock* param = va_arg(arg_list, struct flock*);
+      ret = sys_fcntl_func(fd, cmd, param);
+      break;
+    }
+  }
+
+  va_end(arg_list);
+
+  return ret;
+}
 
 int connect(int fd, const struct sockaddr* address, socklen_t address_len) {
   HOOK_SYS_FUNC(connect);
 
   if (!rt_is_enable_sys_hook()) {
-    return g_sys_connect_func(fd, address, address_len);
+    return sys_connect_func(fd, address, address_len);
   }
 
-  int ret = fd_nonblock(fd);
-  if (ret < 0) {
+  int ret = sys_connect_func(fd, address, address_len);
+  
+  FdAttr* attr = FdAttrs::get(fd);
+	if( !attr ) {
     return ret;
   }
 
-  ret = g_sys_connect_func(fd, address, address_len);
-  if (ret < 0) {
+	if(attr->is_nonblock()) {
     return ret;
   }
+	
+  if (!(ret < 0 && errno == EINPROGRESS)) {
+		return ret;
+	}
 
   // 重试3次
   pollfd pf;
@@ -140,12 +219,15 @@ int connect(int fd, const struct sockaddr* address, socklen_t address_len) {
 }
 
 ssize_t read(int fd, void* buf, size_t nbyte) {
-  LOG_DEBUG("exec hook read\n");
   HOOK_SYS_FUNC(read);
 
   if (!rt_is_enable_sys_hook()) {
-    return g_sys_read_func(fd, buf, nbyte);
+    return sys_read_func(fd, buf, nbyte);
   }
+
+  // 这里需要先判断fd是否已经设置过nonBlocking了，
+  // 如果是nonBlocking，则直接转调sys_read,
+  // 如果是blocking，需要拆分成两个步骤，等待可读事件+有了可读事件后的处理
 
   struct pollfd pf = {0};
   pf.fd = fd;
@@ -159,13 +241,18 @@ ssize_t read(int fd, void* buf, size_t nbyte) {
     return pollret;
   }
 
+  if (pollret == 0) {
+    return 0;
+  }
+
   // 到了这里，重新拿到了cpu的执行权, 此时fd已经可读了，将数据读出
-  ssize_t readret = g_sys_read_func(fd, (char*)buf, nbyte);
+  ssize_t readret = sys_read_func(fd, (char*)buf, nbyte);
 
   if (readret < 0) {
     LOG_ERROR("read error, ret:%ld\n", readret);
   }
 
+  LOG_DEBUG("read len:%ld", readret);
   return readret;
 }
 
@@ -174,13 +261,13 @@ ssize_t write(int fd, const void* buf, size_t nbyte) {
   HOOK_SYS_FUNC(write);
 
   if (!rt_is_enable_sys_hook()) {
-    return g_sys_write_func(fd, buf, nbyte);
+    return sys_write_func(fd, buf, nbyte);
   }
 
   size_t wrotelen = 0;
 
   // 尝试直接写，写不了就告诉epoll能写了再通知我
-  ssize_t writeret = g_sys_write_func(fd, (const char*)buf + wrotelen, nbyte - wrotelen);
+  ssize_t writeret = sys_write_func(fd, (const char*)buf + wrotelen, nbyte - wrotelen);
 
   if (writeret == 0) {
     return writeret;
@@ -197,7 +284,7 @@ ssize_t write(int fd, const void* buf, size_t nbyte) {
     pf.events = (POLLOUT | POLLERR | POLLHUP);
     poll(&pf, 1, 1000);
 
-    writeret = g_sys_write_func(fd, (const char*)buf + wrotelen, nbyte - wrotelen);
+    writeret = sys_write_func(fd, (const char*)buf + wrotelen, nbyte - wrotelen);
 
     if (writeret <= 0) {
       break;

@@ -3,6 +3,7 @@
 #include "rt.h"
 #include "common.h"
 #include "logger.h"
+#include "unistd.h"
 
 EventLoop::EventLoop() {
   epfd_ = epoll_create(ep_size_);
@@ -33,9 +34,13 @@ void EventLoop::loop() {
 
     for (int i = 0; i < ret; i++) {
       auto item = (TimeWheelSlotItem*)events_[i].data.ptr;
-      // 这里的item可能是PollFdGroup，也可能是PollFdItem
+      // 这里的item可能是PollGroup，也可能是PollItem
       if (item->group_member_cb_) {
-        item->group_member_cb_(item);
+        item->group_member_cb_(item, events_[i]);
+      }
+      if (item->link_) {
+        LOG_DEBUG("delete item %p", item);
+        item->link_->delete_node(item);
       }
       active_list_->add_back(item);
     }
@@ -61,24 +66,31 @@ void EventLoop::loop() {
         }
       }
     }
+    // LOG_DEBUG("loop...");
+    // sleep(1);
   }
 }
 
 int EventLoop::poll_wait(epoll_event* events, int maxevents, int timeout) { return epoll_wait(epfd_, events, maxevents, timeout); }
 
-int EventLoop::poll_ctl(int op, int fd, epoll_event* ev) { return epoll_ctl(epfd_, op, fd, ev); }
+int EventLoop::poll_ctl(int op, int fd, epoll_event* ev) {
+  // LOG_DEBUG("op:%d fd:%d ev:%d", op, fd, ev->events);
+  return epoll_ctl(epfd_, op, fd, ev);
+}
 
 static void OnPollGroupDone(TimeWheelSlotItem* item) {
   auto routine = (Routine*)item->arg_;
   rt_resume(routine);
 }
 
-static void OnPollGroupItemDone(TimeWheelSlotItem* item) {
+static void OnPollGroupItemDone(TimeWheelSlotItem* item, epoll_event ev) {
   PollItem* pitem = (PollItem*)item->arg_;
+  pitem->fd_->revents = ev.events;
   pitem->group_->trigger_cnt_++;
+  // LOG_DEBUG("on_poll_group_item_done, fd:%d revents:%d", pitem->fd_->fd, pitem->fd_->revents);
 }
 
-int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_func poll_func) {
+int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, poll_pfn_t poll_func) {
   if (timeout_ms == 0) {
     return poll_func(fds, nfds, 0);
   }
@@ -88,15 +100,17 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_f
 
   auto curr_rt = get_curr_routine();
   auto group = new PollGroup();
+  // LOG_DEBUG("new group:%p rt:%p", group, curr_rt);
+
   group->epfd = epfd_;
   group->fds_ = fds;
   group->nfds_ = nfds;
   group->cb_ = OnPollGroupDone;
   group->arg_ = curr_rt;
+  group->trigger_cnt_ = 0;
 
   // 告诉epoll我关心这些fd的事件
   for (uint i = 0; i < nfds; i++) {
-    // 这里考虑一下是放堆上好还是放栈上好
     auto item = new PollItem();
     item->group_ = group;
     item->fd_ = &fds[i];
@@ -109,7 +123,7 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_f
     if (fds[i].fd > -1) {
       ev.data.ptr = item;
       ev.events = fds[i].events;
-      
+
       int ret = poll_ctl(EPOLL_CTL_ADD, fds[i].fd, &ev);
       if (ret < 0) {
         // free()
@@ -123,6 +137,7 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_f
   group->timeout_ms_ = now + timeout_ms;
 
   // 整组时间挂在时间轮上
+  // LOG_DEBUG("add group:%p to timewheel", group);
   int ret = time_wheel_->add_item(group);
   if (ret != 0) {
     LOG_ERROR("add timewheel error");
@@ -133,6 +148,13 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_f
     // 等上一个方法回来时，重新拿到了cpu
   }
 
+  // group在这里被唤醒之后，需要检查自身是否是被正常唤醒
+  // 如果是由于调度错误导致group被唤醒，则一切都会乱套
+  if (group->link_) {
+    LOG_ERROR("invalid resume group");
+    return -1;
+  }
+
   // 将事件从epoll上移除
   for (uint i = 0; i < nfds; i++) {
     if (fds[i].fd > -1) {
@@ -141,10 +163,13 @@ int EventLoop::poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_f
       if (ret < 0) {
         LOG_DEBUG("epoll_ctl_del error, fd:%d ret:%d", fds[i].fd, ret);
       }
+      fds[i].revents = item->fd_->revents;
+      delete item;
     }
   }
 
   int trigger_cnt = group->trigger_cnt_;
   delete group;
+  // LOG_DEBUG("delete group %p", group);
   return trigger_cnt;
 }

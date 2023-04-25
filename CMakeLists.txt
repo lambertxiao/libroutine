@@ -27,3 +27,5 @@ target_link_libraries("example_echosvc" dl)
 add_executable(example_echocli example/example_echocli.cpp ${SRC_FILES})
 target_link_libraries("example_echocli" dl)
 
+add_executable(doubly_list_test test/doubly_list_test.cpp)
+

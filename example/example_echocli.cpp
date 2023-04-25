@@ -48,7 +48,7 @@ void AddSuccCnt() {
 void AddFailCnt() {
   int now = time(NULL);
   if (now > iTime) {
-    printf("time: %d succ_cnt %d Fail Cnt %d\n", iTime, iSuccCnt, iFailCnt);
+    printf("time: %d succ_cnt %d fail_cnt %d\n", iTime, iSuccCnt, iFailCnt);
     iTime = now;
     iSuccCnt = 0;
     iFailCnt = 0;

@@ -8,8 +8,10 @@
 static __thread RoutineThreadEnv* routineEnvPerThread = NULL;
 
 RoutineThreadEnv::RoutineThreadEnv() : call_stack_size_(0) {
+  auto attr = new RoutineAttr();
+  attr->name = "main";
   // 创建主协程
-  auto main_routine = new Routine(this, true, nullptr, nullptr, nullptr);
+  auto main_routine = new Routine(this, true, attr, nullptr, nullptr);
   LOG_DEBUG("create main routine:%p", main_routine);
 
   call_stack_[call_stack_size_++] = main_routine;

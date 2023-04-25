@@ -7,15 +7,17 @@
 #include "eventloop.h"
 #include "thread_env.h"
 #include "stack_mem.h"
+#include <string>
 
 struct RoutineAttr {
+  std::string name;
   int stack_size;
   // 是否使用共享栈
   ShareStack* share_stack;
 
   RoutineAttr() {
     stack_size = 128 * 1024;
-    share_stack = NULL;
+    share_stack = nullptr;
   }
 } __attribute__((packed));
 
@@ -29,6 +31,7 @@ class Routine {
   bool is_main_;
   RoutineThreadEnv* env_;
   RoutineCtx ctx_;
+  RoutineAttr* attr_;
   RoutineFunc func_;
   void* arg_;
 
@@ -50,6 +53,7 @@ class Routine {
   // 初始化上下文
   void init_ctx(RoutineEntryFunc func);
   void save_stack_to_buff();
+  const char* name();
 };
 
 struct EventLoopFunc {};

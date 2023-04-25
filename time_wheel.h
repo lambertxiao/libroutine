@@ -5,6 +5,7 @@
 #include <list>
 #include <vector>
 #include "doubly_list.h"
+#include <sys/epoll.h>
 
 class TimeWheelSlotItem;
 
@@ -31,7 +32,8 @@ class TimeWheel {
   void time_forward(TimeWheelSlotLink* link, uint64_t now);
 };
 
-typedef void (*TimeCallBack)(TimeWheelSlotItem*);
+typedef void (*EventCallBack)(TimeWheelSlotItem*);
+typedef void (*EventPreCallBack)(TimeWheelSlotItem*, epoll_event ev);
 
 struct TimeWheelSlotItem : public DoublyLinkedListNode<TimeWheelSlotItem> {
   enum {
@@ -41,9 +43,9 @@ struct TimeWheelSlotItem : public DoublyLinkedListNode<TimeWheelSlotItem> {
   // 到期时间
   uint64_t timeout_ms_;
 
-  // 当该item是某个pollGroup中的成员时，该cb存在, 这个函数的调用必须早于pollGroup的cb的调用 
-  TimeCallBack group_member_cb_;
-  TimeCallBack cb_;
+  // 当该item是某个pollGroup中的成员时，该cb存在, 这个函数的调用必须早于pollGroup的cb的调用
+  EventPreCallBack group_member_cb_;
+  EventCallBack cb_;
   void* arg_;  // arg实际上会是回调的routine
 
   // 是否超时

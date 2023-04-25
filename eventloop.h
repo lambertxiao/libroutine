@@ -4,8 +4,7 @@
 #include <sys/poll.h>
 #include "time_wheel.h"
 #include <sys/epoll.h>
-
-typedef int (*sys_poll_func)(pollfd fds[], nfds_t nfds, int timeout);
+#include "syscall.h"
 
 // 每一个线程持有一个eventloop
 class EventLoop {
@@ -24,7 +23,7 @@ class EventLoop {
   void loop();
 
   // 轮训fds，如果有设置超时，由于单线程里不能阻塞操作，需要将回调设置到时间轮上
-  int poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, sys_poll_func func);
+  int poll(struct pollfd fds[], nfds_t nfds, int timeout_ms, poll_pfn_t func);
 
   int poll_wait(epoll_event* events, int maxevents, int timeout);
   int poll_ctl(int op, int fd, epoll_event* ev);
@@ -34,7 +33,6 @@ struct PollItem;
 
 // 多个fd封装在一个group里挂在时间轮上的结构
 struct PollGroup : public TimeWheelSlotItem {
-
   // 待监控的fd
   struct pollfd* fds_;
   // 待监控fd的个数

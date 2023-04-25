@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <sys/time.h>
 #include <stack>
-
+#include <memory.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <sys/un.h>
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/wait.h>
-
+#include <string>
 #include "../rt.h"
 
 using namespace std;
@@ -42,6 +42,7 @@ static void *workerRoutineFunc(void *arg) {
   while (true) {
     // 没有设置fd的时候，交出cpu
     if (w->fd == -1) {
+      LOG_WARN("put worker");
       workers.push(w);
       rt_yield_ct();
       continue;
@@ -56,8 +57,10 @@ static void *workerRoutineFunc(void *arg) {
       poll(&pf, 1, 1000);
 
       int ret = read(fd, buf, sizeof(buf));
+      printf("worker fd:%d read:%d\n", fd, ret);
       if (ret > 0) {
         ret = write(fd, buf, ret);
+        printf("worker write:%d\n", ret);
       }
       if (ret > 0 || (-1 == ret && EAGAIN == errno)) {
         continue;
@@ -79,7 +82,6 @@ static void *accept_routine(void *) {
       poll(NULL, 0, 1000);
       continue;
     }
-
     struct sockaddr_in addr;  // maybe sockaddr_un;
     memset(&addr, 0, sizeof(addr));
     socklen_t len = sizeof(addr);
@@ -99,10 +101,13 @@ static void *accept_routine(void *) {
     }
 
     printf("accept new connection, fd:%d\n", fd);
+    LOG_WARN("worker size:%ld", workers.size());
+
     SetNonBlock(fd);
     Worker *w = workers.top();
     w->fd = fd;
     workers.pop();
+    LOG_DEBUG("get worker rt %p:%s", w->rt, w->rt->name());
     rt_resume(w->rt);
   }
   return 0;
@@ -163,15 +168,18 @@ int main(int argc, char *argv[]) {
   for (int i = 0; i < cnt; i++) {
     Worker *w = (Worker *)calloc(1, sizeof(Worker));
     w->fd = -1;
-    workers.push(w);
 
-    rt_create(&(w->rt), NULL, workerRoutineFunc, w);
+    RoutineAttr* attr = new RoutineAttr();
+    std::string name = "worker_" + std::to_string(i);
+    attr->name = name;
+    rt_create(&(w->rt), attr, workerRoutineFunc, w);
     rt_resume(w->rt);
   }
-
   // 创建一个接受协程
   Routine *accept_rt = NULL;
-  rt_create(&accept_rt, NULL, accept_routine, 0);
+  RoutineAttr attr1;
+  attr1.name = "accept_routine";
+  rt_create(&accept_rt, &attr1, accept_routine, 0);
   printf("create accept_routine %p\n", accept_rt);
   rt_resume(accept_rt);
 

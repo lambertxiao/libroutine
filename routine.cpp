@@ -16,7 +16,7 @@ enum {
 };
 
 Routine::Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr, RoutineFunc func, void* arg)
-    : is_main_(is_main), env_(env), func_(func), arg_(arg), stack_buff_(nullptr), stack_buff_len_(0), is_start_(false), is_stop_(false), enable_hook_sys_(false) {
+    : is_main_(is_main), env_(env), attr_(attr), func_(func), arg_(arg), stack_buff_(nullptr), stack_buff_len_(0), is_start_(false), is_stop_(false), enable_hook_sys_(false) {
 
   RoutineAttr at;
   if (attr) {
@@ -51,6 +51,13 @@ Routine::Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr, Routine
   enable_hook_sys_ = false;
   is_share_stack = at.share_stack != nullptr;
 };
+
+const char* Routine::name() {
+  if (attr_) {
+    return attr_->name.c_str();
+  }
+  return "";
+}
 
 // only __x86_64__
 void Routine::init_ctx(RoutineEntryFunc func) {
