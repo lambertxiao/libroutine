@@ -7,6 +7,10 @@
 #include "logger.h"
 
 extern "C" {
+// coctx_swap 接受两个参数，无返回值。
+// 其中，第一个参数 curr 为当前协程的 coctx_t结构指针，其实是个输出参数，函数调用过程中会将当前协程的 context 保存在这个参数指向的内存里；
+// 第二个参数 pending，即待切入的协程的 coctx_t 指针，是个输入参数，coctx_swap 从这里取上次保存的 context，恢复各寄存器的值。
+// 这个函数奇特之处，在于调用之前还处于第一个协程的环境，该函数返回后，则当前运行的协程就已经完全是第二个协程了。
 extern void rtctx_swap(RoutineCtx*, RoutineCtx*) asm("rtctx_swap");
 };
 
@@ -111,6 +115,7 @@ void rt_swap(Routine* curr, Routine* pending_rt) {
   // swap context交换协程上下文了
   rtctx_swap(&(curr->ctx_), &(pending_rt->ctx_));
 
+  // 上一步已经将cpu交出去了，这里又重新拿到了cpu
   // stack buffer may be overwrite, so get again;
   Routine* update_occupy_co = env->occupy_rt_;
   Routine* update_pending_co = env->pending_rt_;
