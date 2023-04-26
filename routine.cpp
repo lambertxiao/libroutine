@@ -54,7 +54,7 @@ Routine::Routine(RoutineThreadEnv* env, bool is_main, RoutineAttr* attr, Routine
 
 const char* Routine::name() {
   if (attr_) {
-    return attr_->name.c_str();
+    return attr_->name;
   }
   return "";
 }

@@ -34,10 +34,10 @@ static int log_level = LOG_LEVEL_DEBUG;
           break;                                                                                                                                                                                 \
         case LOG_LEVEL_INFO:                                                                                                                                                                     \
           color = COLOR_GREEN;                                                                                                                                                                   \
-          prefix = "INFO";                                                                                                                                                                      \
+          prefix = "INFO";                                                                                                                                                                       \
           break;                                                                                                                                                                                 \
         case LOG_LEVEL_WARN:                                                                                                                                                                     \
-          prefix = "WARN";                                                                                                                                                                      \
+          prefix = "WARN";                                                                                                                                                                       \
           color = COLOR_YELLOW;                                                                                                                                                                  \
           break;                                                                                                                                                                                 \
         case LOG_LEVEL_ERROR:                                                                                                                                                                    \

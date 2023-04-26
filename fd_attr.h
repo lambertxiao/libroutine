@@ -16,12 +16,11 @@ class FdAttrs {
  private:
   const static int max_cnt_ = 102400;
   static FdAttr* fds_[102400];
- 
+
  public:
   static FdAttr* alloc(int fd);
   static void free(int fd);
   static FdAttr* get(int fd);
- 
 };
 
 #endif

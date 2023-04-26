@@ -16,7 +16,7 @@ int main() {
   while (curr != list->tail) {
     auto node = curr;
     curr = curr->next;
-    
+
     list->delete_node(node);
     list2->add_back(node);
   }

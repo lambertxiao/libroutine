@@ -27,7 +27,6 @@ static void SetAddr(const char *pszIP, const unsigned short shPort, struct socka
   addr.sin_family = AF_INET;
   addr.sin_port = htons(shPort);
   addr.sin_addr.s_addr = inet_addr(pszIP);
-  ;
 }
 
 static int iSuccCnt = 0;

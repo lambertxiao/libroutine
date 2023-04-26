@@ -80,7 +80,7 @@ void rt_swap(Routine* curr, Routine* pending_rt) {
     return;
   }
 
-  //LOG_DEBUG("swap routine %p:%s => %p:%s", curr, curr->name(), pending_rt, pending_rt->name());
+  // LOG_DEBUG("swap routine %p:%s => %p:%s", curr, curr->name(), pending_rt, pending_rt->name());
   LOG_DEBUG("swap routine %s => %s", curr->name(), pending_rt->name());
   RoutineThreadEnv* env = curr->env_;
 

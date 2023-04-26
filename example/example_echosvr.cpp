@@ -169,17 +169,17 @@ int main(int argc, char *argv[]) {
     Worker *w = (Worker *)calloc(1, sizeof(Worker));
     w->fd = -1;
 
-    RoutineAttr* attr = new RoutineAttr();
-    std::string name = "worker_" + std::to_string(i);
-    attr->name = name;
+    RoutineAttr *attr = new RoutineAttr();
+    auto str = new std::string("worker_" + std::to_string(i));
+    attr->name = str->c_str();
     rt_create(&(w->rt), attr, workerRoutineFunc, w);
     rt_resume(w->rt);
   }
   // 创建一个接受协程
   Routine *accept_rt = NULL;
-  RoutineAttr attr1;
-  attr1.name = "accept_routine";
-  rt_create(&accept_rt, &attr1, accept_routine, 0);
+  RoutineAttr attr;
+  attr.name = "accept_routine";
+  rt_create(&accept_rt, &attr, accept_routine, 0);
   printf("create accept_routine %p\n", accept_rt);
   rt_resume(accept_rt);
 

@@ -73,7 +73,7 @@ class DoublyLinkedList {
     if (node == this->head || node == this->tail) {
       LOG_DEBUG("cannot delete head or tail node");
       return;
-    } 
+    }
 
     if (node->next == node || node->prev == node) {
       LOG_ERROR("invalid node %p prev %p next %p", node, node->next, node->prev);

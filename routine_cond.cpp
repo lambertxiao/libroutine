@@ -13,8 +13,7 @@ int RoutineCond::wait(RoutineCondWaitItem* item) {
     // 设置等待有效期
     item->timeitem_.timeout_ms_ = get_time_ms() + item->timeout_;
 
-    int ret =
-        get_curr_thread_env()->loop_->time_wheel_->add_item(&item->timeitem_);
+    int ret = get_curr_thread_env()->loop_->time_wheel_->add_item(&item->timeitem_);
     if (ret != 0) {
       return ret;
     }

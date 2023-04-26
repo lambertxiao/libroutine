@@ -30,15 +30,17 @@
 #include "syscall.h"
 
 // 记录阻塞的系统调用的地址
+static socket_pfn_t sys_socket_func = (socket_pfn_t)dlsym(RTLD_NEXT, "socket");
 static poll_pfn_t sys_poll_func = (poll_pfn_t)dlsym(RTLD_NEXT, "poll");
 static connect_pfn_t sys_connect_func = (connect_pfn_t)dlsym(RTLD_NEXT, "connect");
 static read_pfn_t sys_read_func = (read_pfn_t)dlsym(RTLD_NEXT, "read");
 static write_pfn_t sys_write_func = (write_pfn_t)dlsym(RTLD_NEXT, "write");
 static fcntl_pfn_t sys_fcntl_func = (fcntl_pfn_t)dlsym(RTLD_NEXT, "fcntl");
+static accpet_pfn_t sys_accpet = (accpet_pfn_t)dlsym(RTLD_NEXT, "accept");
 
 // dlsym函数是一个C语言的动态链接库函数，用于在运行时动态地获取一个共享库（或DLL）中的函数或变量地址
 // 下面的逻辑将所有同步的系统调用如connect、send等函数的地址先保存了下来
-#define HOOK_SYS_FUNC(name)                                      \
+#define HOOK_SYS_FUNC(name)                                    \
   if (!sys_##name##_func) {                                    \
     sys_##name##_func = (name##_pfn_t)dlsym(RTLD_NEXT, #name); \
   }
@@ -79,21 +81,24 @@ int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
   return ret;
 }
 
-// 将fd设置为非阻塞
-/*
-int fd_nonblock(int fd) {
-  int flags = fcntl(fd, F_GETFL, 0);
-  if (flags == -1) {
-    return -1;
+int socket(int domain, int type, int protocol) {
+  HOOK_SYS_FUNC(socket);
+
+  if (!rt_is_enable_sys_hook()) {
+    return sys_socket_func(domain, type, protocol);
   }
 
-  flags |= O_NONBLOCK;
-  if (fcntl(fd, F_SETFL, flags) == -1) {
-    return -1;
+  int fd = sys_socket_func(domain, type, protocol);
+  if (fd < 0) {
+    return fd;
   }
-  return 0;
+
+  FdAttrs::alloc(fd);
+  // lp->domain = domain;
+  // fcntl(fd, F_SETFL, sys_fcntl_func(fd, F_GETFL,0 ));
+
+  return fd;
 }
-*/
 
 int fcntl(int fd, int cmd, ...) {
   HOOK_SYS_FUNC(fcntl);
@@ -173,6 +178,15 @@ int fcntl(int fd, int cmd, ...) {
   return ret;
 }
 
+int accpet(int fd, const struct sockaddr* address, socklen_t address_len) {
+  int accpet_fd = sys_accpet(fd, address, address_len);
+  if (accpet_fd >= 0) {
+    FdAttrs::alloc(fd);
+  }
+
+  return accpet_fd;
+}
+
 int connect(int fd, const struct sockaddr* address, socklen_t address_len) {
   HOOK_SYS_FUNC(connect);
 
@@ -181,19 +195,19 @@ int connect(int fd, const struct sockaddr* address, socklen_t address_len) {
   }
 
   int ret = sys_connect_func(fd, address, address_len);
-  
+
   FdAttr* attr = FdAttrs::get(fd);
-	if( !attr ) {
+  if (!attr) {
     return ret;
   }
 
-	if(attr->is_nonblock()) {
+  if (attr->is_nonblock()) {
     return ret;
   }
-	
+
   if (!(ret < 0 && errno == EINPROGRESS)) {
-		return ret;
-	}
+    return ret;
+  }
 
   // 重试3次
   pollfd pf;
@@ -228,6 +242,11 @@ ssize_t read(int fd, void* buf, size_t nbyte) {
   // 这里需要先判断fd是否已经设置过nonBlocking了，
   // 如果是nonBlocking，则直接转调sys_read,
   // 如果是blocking，需要拆分成两个步骤，等待可读事件+有了可读事件后的处理
+  auto attr = FdAttrs::get(fd);
+  // 如果没有找到这个fd或者fd设置了非阻塞，如果上层已经设置了非阻塞了，则这里什么都不用做
+  if (!attr || attr->is_nonblock()) {
+    return sys_read_func(fd, buf, nbyte);
+  }
 
   struct pollfd pf = {0};
   pf.fd = fd;

@@ -10,7 +10,8 @@
 #include <string>
 
 struct RoutineAttr {
-  std::string name;
+  // only for debug
+  const char* name;
   int stack_size;
   // 是否使用共享栈
   ShareStack* share_stack;
