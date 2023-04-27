@@ -46,11 +46,11 @@ static accpet_pfn_t sys_accpet = (accpet_pfn_t)dlsym(RTLD_NEXT, "accept");
   }
 
 // 单线程非阻塞的poll，在给定的超时时间内，轮训fds
-int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
+int poll(struct pollfd fds[], nfds_t nfds, int timeout_ms) {
   HOOK_SYS_FUNC(poll);
 
-  if (!rt_is_enable_sys_hook() || timeout == 0) {
-    return sys_poll_func(fds, nfds, timeout);
+  if (!rt_is_enable_sys_hook() || timeout_ms == 0) {
+    return sys_poll_func(fds, nfds, timeout_ms);
   }
 
   // 合并重复的文件描述符
@@ -69,7 +69,7 @@ int poll(struct pollfd fds[], nfds_t nfds, int timeout) {
     pollfds.push_back(pfd);
   }
 
-  int ret = loop->poll(pollfds.data(), pollfds.size(), timeout, sys_poll_func);
+  int ret = loop->poll(pollfds.data(), pollfds.size(), timeout_ms, sys_poll_func);
 
   // 更新原始的pollfd结构体数组
   for (size_t i = 0; i < nfds; i++) {
@@ -130,7 +130,7 @@ int fcntl(int fd, int cmd, ...) {
     }
     case F_GETFL: {
       ret = sys_fcntl_func(fd, cmd);
-      if (attr && !(attr->flags_ & O_NONBLOCK)) {
+      if (attr && !attr->is_nonblock()) {
         ret = ret & (~O_NONBLOCK);
       }
       break;
@@ -260,23 +260,25 @@ ssize_t read(int fd, void* buf, size_t nbyte) {
     return pollret;
   }
 
-  if (pollret == 0) {
-    return 0;
-  }
+
+  LOG_DEBUG("read poll ret %d", pollret);
+
+
+  //if (pollret == 0) {
+  //  return 0;
+  //}
 
   // 到了这里，重新拿到了cpu的执行权, 此时fd已经可读了，将数据读出
   ssize_t readret = sys_read_func(fd, (char*)buf, nbyte);
 
   if (readret < 0) {
-    LOG_ERROR("read error, ret:%ld\n", readret);
+    LOG_ERROR("read error, pollret:%d ret:%ld\n", pollret, readret);
   }
 
-  LOG_DEBUG("read len:%ld", readret);
   return readret;
 }
 
 ssize_t write(int fd, const void* buf, size_t nbyte) {
-  LOG_DEBUG("exec hook write\n");
   HOOK_SYS_FUNC(write);
 
   if (!rt_is_enable_sys_hook()) {

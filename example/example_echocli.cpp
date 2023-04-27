@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include "../rt.h"
+#include "../logger.h"
 
 using namespace std;
 struct EndPoint {
@@ -31,29 +32,14 @@ static void SetAddr(const char *pszIP, const unsigned short shPort, struct socka
 
 static int iSuccCnt = 0;
 static int iFailCnt = 0;
-static int iTime = 0;
 
 void AddSuccCnt() {
   int now = time(NULL);
-  if (now > iTime) {
-    printf("time: %d succ_cnt: %d fail_cnt: %d\n", iTime, iSuccCnt, iFailCnt);
-    iTime = now;
-    iSuccCnt = 0;
-    iFailCnt = 0;
-  } else {
-    iSuccCnt++;
-  }
+  LOG_INFO("time: %d succ_cnt: %d fail_cnt: %d", now, iSuccCnt++, iFailCnt);
 }
 void AddFailCnt() {
   int now = time(NULL);
-  if (now > iTime) {
-    printf("time: %d succ_cnt %d fail_cnt %d\n", iTime, iSuccCnt, iFailCnt);
-    iTime = now;
-    iSuccCnt = 0;
-    iFailCnt = 0;
-  } else {
-    iFailCnt++;
-  }
+  LOG_INFO("time: %d succ_cnt %d fail_cnt %d", now, iSuccCnt, iFailCnt++);
 }
 
 static void *worker_routine(void *arg) {
@@ -72,6 +58,7 @@ static void *worker_routine(void *arg) {
       SetAddr(endpoint->ip, endpoint->port, addr);
       ret = connect(fd, (struct sockaddr *)&addr, sizeof(addr));
 
+      LOG_DEBUG("connect ret %d", ret);
       if (errno == EALREADY || errno == EINPROGRESS) {
         struct pollfd pf = {0};
         pf.fd = fd;
@@ -84,8 +71,8 @@ static void *worker_routine(void *arg) {
         errno = 0;
         ret = getsockopt(fd, SOL_SOCKET, SO_ERROR, (void *)&error, &socklen);
         if (ret == -1) {
-          // printf("getsockopt ERROR ret %d %d:%s\n", ret, errno,
-          // strerror(errno));
+          printf("getsockopt ERROR ret %d %d:%s\n", ret, errno,
+          strerror(errno));
           close(fd);
           fd = -1;
           AddFailCnt();
@@ -93,8 +80,8 @@ static void *worker_routine(void *arg) {
         }
         if (error) {
           errno = error;
-          // printf("connect ERROR ret %d %d:%s\n", error, errno,
-          // strerror(errno));
+          printf("connect ERROR ret %d %d:%s\n", error, errno,
+          strerror(errno));
           close(fd);
           fd = -1;
           AddFailCnt();
@@ -104,8 +91,11 @@ static void *worker_routine(void *arg) {
     }
 
     ret = write(fd, str, 8);
+    LOG_DEBUG("write ret %d", ret);
+
     if (ret > 0) {
       ret = read(fd, buf, sizeof(buf));
+      LOG_DEBUG("read ret %d", ret);
       if (ret <= 0) {
         close(fd);
         fd = -1;
@@ -135,7 +125,10 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < cnt; i++) {
     Routine *rt = 0;
-    rt_create(&rt, NULL, worker_routine, &endpoint);
+    auto attr = new RoutineAttr();
+    auto str = new std::string("worker_" + std::to_string(i));
+    attr->name = str->c_str();
+    rt_create(&rt, attr, worker_routine, &endpoint);
     rt_resume(rt);
   }
   rt_eventloop(rt_get_thread_eventloop(), NULL, NULL);
